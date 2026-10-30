@@ -50,6 +50,24 @@ describe('connection session', () => {
     expect(useConnection.getState().connectionId).toEqual(expect.any(String))
   })
 
+  it('connects to an approved LAN HTTP server where randomUUID is unavailable', async () => {
+    const native = globalThis.crypto
+    vi.stubGlobal('crypto', { getRandomValues: native.getRandomValues.bind(native) })
+    try {
+      vi.spyOn(axios, 'get').mockResolvedValue(gowaOk)
+      const result = await useConnection
+        .getState()
+        .connect('http://192.168.1.10:3000', 'user', 'secret', true)
+      expect(result).toBe('ok')
+      expect(useConnection.getState().status).toBe('connected')
+      expect(useConnection.getState().connectionId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      )
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('defaults a scheme-less remote address to https before attaching credentials', async () => {
     const get = vi.spyOn(axios, 'get').mockResolvedValue(gowaOk)
     const result = await useConnection.getState().connect('wa.example.com', 'user', 'secret')

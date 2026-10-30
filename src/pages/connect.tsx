@@ -18,6 +18,9 @@ const errorMessages: Record<Exclude<TestResult, 'ok'>, string> = {
     'Credentials are not sent to a remote HTTP server. Use HTTPS, or allow insecure HTTP for a server you trust.',
 }
 
+const unexpectedErrorMessage =
+  'Connecting failed unexpectedly. Reload the page and try again; if it keeps failing, update your browser.'
+
 export default function ConnectPage() {
   const navigate = useNavigate()
   const status = useConnection((state) => state.status)
@@ -42,17 +45,23 @@ export default function ConnectPage() {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
-    const result = await connect(
-      url,
-      username || undefined,
-      password || undefined,
-      allowInsecureHttp,
-    )
-    setSubmitting(false)
-    if (result === 'ok') {
-      navigate('/', { replace: true })
-    } else {
-      setError(errorMessages[result])
+    try {
+      const result = await connect(
+        url,
+        username || undefined,
+        password || undefined,
+        allowInsecureHttp,
+      )
+      if (result === 'ok') {
+        navigate('/', { replace: true })
+      } else {
+        setError(errorMessages[result])
+      }
+    } catch {
+      // Not logged: the error may carry request config with credentials.
+      setError(unexpectedErrorMessage)
+    } finally {
+      setSubmitting(false)
     }
   }
 
