@@ -8,7 +8,7 @@ import { useRecipientJid } from '@/stores/recipient'
 
 export function UserCheckForm() {
   const jid = useRecipientJid()
-  const mutation = useActionMutation(checkUser, { successMessage: 'Check completed' })
+  const mutation = useActionMutation(checkUser, { successMessage: 'Pengecekan selesai' })
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -21,7 +21,7 @@ export function UserCheckForm() {
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <Button type="submit" disabled={mutation.isPending || !jid} className="self-start">
         {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-        Check
+        Cek nomor
       </Button>
       {mutation.data && (
         <div
@@ -33,7 +33,7 @@ export function UserCheckForm() {
           )}
         >
           {onWhatsApp ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
-          {onWhatsApp ? 'User is on WhatsApp' : 'User is not on WhatsApp'}
+          {onWhatsApp ? 'Nomor terdaftar di WhatsApp' : 'Nomor tidak terdaftar di WhatsApp'}
         </div>
       )}
     </form>

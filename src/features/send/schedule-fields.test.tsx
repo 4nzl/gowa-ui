@@ -33,8 +33,8 @@ describe('schedule panel', () => {
     const html = render(
       <ScheduleFields draft={{ timezone: 'UTC', recurrence: 'once' }} patch={noop} />,
     )
-    expect(html).toContain('Send later or repeat')
-    expect(html).not.toContain('First send')
+    expect(html).toContain('Jadwalkan atau ulangi')
+    expect(html).not.toContain('Kirim pertama')
   })
 
   it('expands when the draft carries a scheduled time', () => {
@@ -44,7 +44,7 @@ describe('schedule panel', () => {
         patch={noop}
       />,
     )
-    expect(html).toContain('First send')
+    expect(html).toContain('Kirim pertama')
   })
 
   it('shows the scheduled time in the chosen timezone', () => {
@@ -68,9 +68,9 @@ describe('schedule panel', () => {
         patch={noop}
       />,
     )
-    expect(html).not.toContain('Occurrences (optional)')
-    expect(html).not.toContain('End date (optional)')
-    expect(html).toContain('Timezone')
+    expect(html).not.toContain('Jumlah kali (opsional)')
+    expect(html).not.toContain('Berakhir (opsional)')
+    expect(html).toContain('Zona waktu')
   })
 
   it('offers the repeat limits with an explanation once the send recurs', () => {
@@ -82,9 +82,9 @@ describe('schedule panel', () => {
         />
       </TooltipProvider>,
     )
-    expect(html).toContain('Occurrences (optional)')
-    expect(html).toContain('End date (optional)')
-    expect(html).toContain('What are occurrences?')
+    expect(html).toContain('Jumlah kali (opsional)')
+    expect(html).toContain('Berakhir (opsional)')
+    expect(html).toContain('Apa itu jumlah kali?')
   })
 })
 

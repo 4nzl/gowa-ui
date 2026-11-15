@@ -8,7 +8,7 @@ import { useRecipientJid } from '@/stores/recipient'
 export function BusinessProfileForm() {
   const jid = useRecipientJid()
   const mutation = useActionMutation(getBusinessProfile, {
-    successMessage: 'Business profile fetched',
+    successMessage: 'Profil bisnis diambil',
   })
 
   const onSubmit = (event: FormEvent) => {
@@ -19,11 +19,11 @@ export function BusinessProfileForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <p className="text-muted-foreground text-sm">
-        Works only with WhatsApp Business accounts that have a public profile.
+        Hanya berlaku untuk akun WhatsApp Business yang memiliki profil publik.
       </p>
       <Button type="submit" disabled={mutation.isPending || !jid} className="self-start">
         {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-        Get business profile
+        Ambil profil bisnis
       </Button>
       {mutation.data && <BusinessProfileResult data={mutation.data} />}
     </form>
@@ -35,19 +35,19 @@ function BusinessProfileResult({ data }: { data: BusinessProfileResponse }) {
     <div className="flex flex-col gap-2 rounded-md border p-3 text-sm">
       <Row label="JID" value={data.jid} />
       {data.email && <Row label="Email" value={data.email} />}
-      {data.address && <Row label="Address" value={data.address} />}
+      {data.address && <Row label="Alamat" value={data.address} />}
       {data.business_hours_timezone && (
-        <Row label="Timezone" value={data.business_hours_timezone} />
+        <Row label="Zona waktu" value={data.business_hours_timezone} />
       )}
       {data.categories && data.categories.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground">Categories</span>
+          <span className="text-muted-foreground">Kategori</span>
           <span className="font-mono">{data.categories.map((c) => c.name).join(', ')}</span>
         </div>
       )}
       {data.business_hours && data.business_hours.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground">Business hours</span>
+          <span className="text-muted-foreground">Jam operasional</span>
           <ul className="font-mono">
             {data.business_hours.map((h) => (
               <li key={h.day_of_week}>

@@ -16,7 +16,7 @@ export function SendAudioForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendAudio, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Audio sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Audio terkirim'),
     onSuccess: () => {
       setSource({ url: '' })
       setPtt(false)
@@ -42,11 +42,11 @@ export function SendAudioForm() {
       <FileOrUrlInput label="Audio" accept="audio/*" value={source} onChange={setSource} />
       <label className="flex items-center gap-2 text-sm">
         <Switch checked={ptt} onCheckedChange={setPtt} />
-        Send as voice note (PTT)
+        Kirim sebagai voice note (PTT)
       </label>
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send audio"
+        submitLabel="Kirim audio"
         pending={mutation.isPending}
         disabled={!jid}
         request={audioRequest(payload)}

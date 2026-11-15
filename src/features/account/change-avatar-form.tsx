@@ -15,7 +15,7 @@ export function ChangeAvatarForm() {
   const deviceId = useSelectedDevice()
 
   const mutation = useActionMutation(changeAvatar, {
-    successMessage: 'Avatar updated',
+    successMessage: 'Foto profil diperbarui',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['device-avatar', deviceId] })
     },
@@ -29,10 +29,10 @@ export function ChangeAvatarForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <p className="text-muted-foreground text-sm">
-        Upload a square image (1:1) at least 400×400 to avoid cropping.
+        Unggah gambar persegi (1:1) minimal 400×400 agar tidak terpotong.
       </p>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="avatar-file">Avatar image</Label>
+        <Label htmlFor="avatar-file">Gambar foto profil</Label>
         <Input
           id="avatar-file"
           type="file"
@@ -45,11 +45,11 @@ export function ChangeAvatarForm() {
         />
       </div>
       {preview && (
-        <img src={preview} alt="Preview" className="max-h-64 self-start rounded-md border" />
+        <img src={preview} alt="Pratinjau" className="max-h-64 self-start rounded-md border" />
       )}
       <Button type="submit" disabled={mutation.isPending || !file} className="self-start">
         {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-        Update avatar
+        Simpan foto profil
       </Button>
     </form>
   )

@@ -1,5 +1,6 @@
 import { useId } from 'react'
-import { composeJid, isStatus, recipientOptions, type RecipientType } from '@/lib/jid'
+import { composeJid, isStatus, type RecipientType } from '@/lib/jid'
+import { localizedRecipientOptions } from '@/features/messaging/recipient-labels'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -24,19 +25,19 @@ export function RecipientField({
   onChange: (value: RecipientValue) => void
   showStatus?: boolean
 }) {
-  const options = recipientOptions.filter((option) => showStatus || option.value !== 'status')
+  const options = localizedRecipientOptions(showStatus)
   const jid = composeJid(value.phone, value.type)
   const id = useId()
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label>Recipient type</Label>
+        <Label htmlFor={`${id}-type`}>Jenis penerima</Label>
         <Select
           value={value.type}
           onValueChange={(type) => onChange({ ...value, type: type as RecipientType })}
         >
-          <SelectTrigger>
+          <SelectTrigger id={`${id}-type`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -50,7 +51,7 @@ export function RecipientField({
       </div>
       {!isStatus(value.type) && (
         <div className="flex flex-col gap-2">
-          <Label htmlFor={id}>Phone / Group ID</Label>
+          <Label htmlFor={id}>Nomor / ID grup / JID</Label>
           <Input
             id={id}
             placeholder="628xxxxxxxxxx"

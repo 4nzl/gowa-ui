@@ -1,66 +1,76 @@
-import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { Loader2, MessageSquareText } from 'lucide-react'
-import { unfollowNewsletter, type NewsletterMetadata } from '@/api/newsletter'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useActionMutation } from '@/hooks/use-action-mutation'
+import { useMemo, useState } from 'react'
+import { Loader2, Search, X } from 'lucide-react'
+import type { NewsletterMetadata } from '@/api/newsletter'
 import { toApiError } from '@/lib/api-error'
-import { ChannelMessagesSheet } from '@/features/newsletter/channel-messages-sheet'
 import { useFollowedNewsletters } from '@/features/newsletter/channel'
-import { ChannelSummary } from '@/features/newsletter/channel-summary'
+import { filterChannels } from '@/features/newsletter/channel-filters'
+import { ChannelRow } from '@/features/newsletter/channel-summary'
 
-export function NewsletterList() {
+/** List-pane body for the "Diikuti" tab: followed channels with a local search. */
+export function NewsletterList({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string | null
+  onSelect: (channel: NewsletterMetadata) => void
+}) {
   const { data, isLoading, error } = useFollowedNewsletters()
-  const [openChannel, setOpenChannel] = useState<NewsletterMetadata | null>(null)
-
-  if (isLoading) return <Skeleton className="h-24" />
-  if (error) return <p className="text-destructive text-sm">{toApiError(error).message}</p>
-
-  const items = data?.data ?? []
-  if (items.length === 0)
-    return <p className="text-muted-foreground text-sm">No newsletters followed.</p>
+  const [query, setQuery] = useState('')
+  const all = useMemo(() => data?.data ?? [], [data])
+  const visible = useMemo(() => filterChannels(all, query), [all, query])
 
   return (
-    <>
-      <ul className="flex flex-col divide-y">
-        {items.map((item) => (
-          <FollowedChannel key={item.id} channel={item} onOpen={() => setOpenChannel(item)} />
-        ))}
-      </ul>
-      <ChannelMessagesSheet
-        channel={openChannel}
-        onOpenChange={(open) => !open && setOpenChannel(null)}
-      />
-    </>
-  )
-}
-
-function FollowedChannel({ channel, onOpen }: { channel: NewsletterMetadata; onOpen: () => void }) {
-  const queryClient = useQueryClient()
-  const unfollow = useActionMutation(unfollowNewsletter, {
-    successMessage: 'Unfollowed newsletter',
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['newsletters'] }),
-  })
-
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-3 py-3">
-      <ChannelSummary channel={channel} />
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onOpen}>
-          <MessageSquareText className="size-4" />
-          Messages
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={unfollow.isPending}
-          onClick={() => unfollow.mutate(channel.id)}
-        >
-          {unfollow.isPending && <Loader2 className="size-4 animate-spin" />}
-          Unfollow
-        </Button>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="px-3 pb-2">
+        <label className="bg-muted flex h-10 items-center gap-2 rounded-full px-3.5">
+          <Search className="text-muted-foreground size-4 shrink-0" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Cari saluran diikuti"
+            aria-label="Cari saluran diikuti"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+          />
+          {query && (
+            <button type="button" aria-label="Hapus pencarian" onClick={() => setQuery('')}>
+              <X className="text-muted-foreground size-4" />
+            </button>
+          )}
+        </label>
       </div>
-    </li>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {isLoading ? (
+          <div className="flex justify-center p-6" role="status" aria-label="Memuat saluran">
+            <Loader2 className="text-muted-foreground size-5 animate-spin" />
+          </div>
+        ) : error ? (
+          <p className="text-destructive p-6 text-center text-sm">
+            Gagal memuat saluran: {toApiError(error).message}
+          </p>
+        ) : visible.length === 0 ? (
+          <p className="text-muted-foreground p-6 text-center text-sm">
+            {query
+              ? 'Tidak ada saluran yang cocok.'
+              : 'Belum mengikuti saluran. Buka Temukan untuk mencari saluran.'}
+          </p>
+        ) : (
+          <ul>
+            {visible.map((channel) => (
+              <ChannelRow
+                key={channel.id}
+                channel={channel}
+                selected={channel.id === selectedId}
+                onSelect={() => onSelect(channel)}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+      {!isLoading && !error && (
+        <p className="text-muted-foreground border-t px-4 py-2 text-xs">
+          {all.length} saluran diikuti
+        </p>
+      )}
+    </div>
   )
 }

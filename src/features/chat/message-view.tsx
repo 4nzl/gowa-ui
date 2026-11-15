@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, History, Loader2, PhoneIncoming, Search, X } from 'lucide-react'
+import { ArrowLeft, ChevronDown, History, Loader2, PhoneIncoming, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { getChatMessages, requestChatHistory, type ChatInfo, type MessageInfo } from '@/api/chat'
 import { Button } from '@/components/ui/button'
@@ -201,6 +201,8 @@ export function MessageView({
   const [historyPollUntil, setHistoryPollUntil] = useState(0)
   const [historyPending, setHistoryPending] = useState(false)
   const [unseen, setUnseen] = useState(0)
+  // Mirrors stickToBottom for rendering: the jump button shows whenever the user scrolled up.
+  const [atBottom, setAtBottom] = useState(true)
   const [replyTo, setReplyTo] = useState<MessageInfo | null>(null)
   const stickToBottom = useRef(true)
   const filtering = search !== '' || mediaOnly
@@ -344,6 +346,7 @@ export function MessageView({
     if (!element) return
     const near = element.scrollHeight - element.scrollTop - element.clientHeight < NEAR_BOTTOM_PX
     stickToBottom.current = near
+    setAtBottom(near)
     if (near && unseen) setUnseen(0)
     previous.current.top = element.scrollTop
     previous.current.height = element.scrollHeight
@@ -536,15 +539,21 @@ export function MessageView({
           </div>
         </div>
 
-        {unseen > 0 && (
-          <Button
-            size="sm"
-            className="absolute right-4 bottom-4 rounded-full shadow-md"
+        {!atBottom && (
+          <button
+            type="button"
             onClick={scrollToBottom}
+            aria-label={unseen > 0 ? `Ke pesan terbaru, ${unseen} pesan baru` : 'Ke pesan terbaru'}
+            title="Ke pesan terbaru"
+            className="bg-card text-muted-foreground hover:text-foreground focus-visible:ring-ring animate-in fade-in zoom-in-90 absolute right-4 bottom-4 grid size-11 place-items-center rounded-full border shadow-md outline-none focus-visible:ring-2"
           >
-            <ArrowDown className="size-4" />
-            {unseen} pesan baru
-          </Button>
+            <ChevronDown className="size-6" />
+            {unseen > 0 && (
+              <span className="bg-live absolute -top-1.5 -right-1 min-w-5 rounded-full px-1.5 text-center text-[11px] leading-5 font-semibold text-[#073e29]">
+                {unseen > 99 ? '99+' : unseen}
+              </span>
+            )}
+          </button>
         )}
       </div>
 

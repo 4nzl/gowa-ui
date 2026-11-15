@@ -12,7 +12,7 @@ export function PushnameForm() {
   const queryClient = useQueryClient()
 
   const mutation = useActionMutation(changePushName, {
-    successMessage: 'Push name updated',
+    successMessage: 'Nama tampilan diperbarui',
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['devices'] })
     },
@@ -26,12 +26,12 @@ export function PushnameForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="push-name">New push name</Label>
+        <Label htmlFor="push-name">Nama tampilan baru</Label>
         <Input
           id="push-name"
           value={pushName}
           onChange={(event) => setPushName(event.target.value)}
-          placeholder="Your display name"
+          placeholder="Nama yang terlihat oleh kontak"
           required
         />
       </div>
@@ -41,7 +41,7 @@ export function PushnameForm() {
         className="self-start"
       >
         {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-        Update push name
+        Simpan
       </Button>
     </form>
   )

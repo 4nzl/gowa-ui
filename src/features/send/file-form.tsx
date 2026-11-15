@@ -17,7 +17,7 @@ export function SendFileForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendFile, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'File sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Dokumen terkirim'),
     onSuccess: () => {
       setSource({ url: '' })
       setCaption('')
@@ -40,9 +40,9 @@ export function SendFileForm() {
 
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-      <FileOrUrlInput label="File" value={source} onChange={setSource} />
+      <FileOrUrlInput label="Dokumen" value={source} onChange={setSource} />
       <div className="flex flex-col gap-2">
-        <Label htmlFor="file-caption">Caption</Label>
+        <Label htmlFor="file-caption">Keterangan</Label>
         <Input
           id="file-caption"
           value={caption}
@@ -51,7 +51,7 @@ export function SendFileForm() {
       </div>
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send file"
+        submitLabel="Kirim dokumen"
         pending={mutation.isPending}
         disabled={!jid}
         request={fileRequest(payload)}

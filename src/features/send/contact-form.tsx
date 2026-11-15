@@ -16,7 +16,7 @@ export function SendContactForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendContact, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Contact sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Kontak terkirim'),
     onSuccess: () => {
       setContactName('')
       setContactPhone('')
@@ -39,7 +39,7 @@ export function SendContactForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="contact-name">Contact name</Label>
+        <Label htmlFor="contact-name">Nama kontak</Label>
         <Input
           id="contact-name"
           value={contactName}
@@ -48,7 +48,7 @@ export function SendContactForm() {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="contact-phone">Contact phone</Label>
+        <Label htmlFor="contact-phone">Nomor kontak</Label>
         <Input
           id="contact-phone"
           placeholder="628xxxxxxxxxx"
@@ -59,7 +59,7 @@ export function SendContactForm() {
       </div>
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send contact"
+        submitLabel="Kirim kontak"
         pending={mutation.isPending}
         disabled={!jid}
         request={contactRequest(payload)}

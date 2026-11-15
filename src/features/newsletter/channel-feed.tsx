@@ -12,18 +12,10 @@ import {
   getNewsletterMessages,
   type NewsletterMessage,
   type NewsletterMessagesResponse,
-  type NewsletterMetadata,
 } from '@/api/newsletter'
-import { IdText } from '@/components/shared/id-text'
+import { PaneSection } from '@/components/layout/list-detail'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActionMutation } from '@/hooks/use-action-mutation'
 import { useAppInfo } from '@/hooks/use-app-info'
@@ -33,36 +25,11 @@ import { formatBytes, formatDate } from '@/lib/format'
 import { trackedQueryFn } from '@/lib/private-query'
 import { rerootServerUrl } from '@/lib/url'
 import { useConnection } from '@/stores/connection'
-import { channelName } from '@/features/newsletter/channel'
-import { LiveUpdatesSwitch } from '@/features/newsletter/live-updates'
 
 const PAGE_SIZE = 20
 
-export function ChannelMessagesSheet({
-  channel,
-  onOpenChange,
-}: {
-  channel: NewsletterMetadata | null
-  onOpenChange: (open: boolean) => void
-}) {
-  return (
-    <Sheet open={!!channel} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle className="truncate pr-8">
-            {channel ? channelName(channel) : 'Channel'}
-          </SheetTitle>
-          <SheetDescription asChild>
-            <IdText value={channel?.id ?? ''} />
-          </SheetDescription>
-        </SheetHeader>
-        {channel && <ChannelMessages key={channel.id} newsletterId={channel.id} />}
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-function ChannelMessages({ newsletterId }: { newsletterId: string }) {
+/** Recent posts of a channel with their counters, inline in the detail pane. */
+export function ChannelFeed({ newsletterId }: { newsletterId: string }) {
   const device = useSelectedDevice()
   const connectionId = useConnection((state) => state.connectionId)
   const queryClient = useQueryClient()
@@ -74,7 +41,7 @@ function ChannelMessages({ newsletterId }: { newsletterId: string }) {
       trackedQueryFn(connectionId, () =>
         getNewsletterMessages({ newsletter_id: newsletterId, count: PAGE_SIZE, before: pageParam }),
       )(),
-    enabled: connectionId !== null,
+    enabled: !!device && connectionId !== null,
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (last) =>
       last.data.length < PAGE_SIZE
@@ -99,7 +66,7 @@ function ChannelMessages({ newsletterId }: { newsletterId: string }) {
       })
     },
     {
-      successMessage: (result) => `Counters refreshed for ${result.data.length} messages`,
+      successMessage: (result) => `Penghitung ${result.data.length} postingan diperbarui`,
       // Written into the cached pages, so a later refetch replaces them with newer counts.
       onSuccess: (result) => {
         const updates = new Map(result.data.map((message) => [message.server_id, message]))
@@ -129,12 +96,14 @@ function ChannelMessages({ newsletterId }: { newsletterId: string }) {
   )
 
   return (
-    <div className="flex flex-col gap-4 px-4 pb-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <LiveUpdatesSwitch newsletterId={newsletterId} />
+    <PaneSection
+      title="Postingan"
+      description="Postingan terbaru beserta jumlah dilihat, diteruskan, dan reaksi."
+      actions={
         <Button
           variant="outline"
           size="sm"
+          className="shrink-0"
           disabled={refresh.isPending || messages.length === 0}
           onClick={() => refresh.mutate()}
         >
@@ -143,14 +112,18 @@ function ChannelMessages({ newsletterId }: { newsletterId: string }) {
           ) : (
             <RefreshCw className="size-4" />
           )}
-          Refresh counters
+          Perbarui penghitung
         </Button>
-      </div>
-
+      }
+    >
       {query.isLoading && <Skeleton className="h-40" />}
-      {query.error && <p className="text-destructive text-sm">{toApiError(query.error).message}</p>}
+      {query.error && (
+        <p className="text-destructive text-sm">
+          Gagal memuat postingan: {toApiError(query.error).message}
+        </p>
+      )}
       {query.isSuccess && messages.length === 0 && (
-        <p className="text-muted-foreground text-sm">No recent posts.</p>
+        <p className="text-muted-foreground text-sm">Belum ada postingan terbaru.</p>
       )}
 
       <ul className="flex flex-col divide-y">
@@ -160,18 +133,19 @@ function ChannelMessages({ newsletterId }: { newsletterId: string }) {
       </ul>
 
       {query.hasNextPage && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="self-center"
-          disabled={query.isFetchingNextPage}
-          onClick={() => void query.fetchNextPage()}
-        >
-          {query.isFetchingNextPage && <Loader2 className="size-4 animate-spin" />}
-          Load older
-        </Button>
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={query.isFetchingNextPage}
+            onClick={() => void query.fetchNextPage()}
+          >
+            {query.isFetchingNextPage && <Loader2 className="size-4 animate-spin" />}
+            Muat lebih lama
+          </Button>
+        </div>
       )}
-    </div>
+    </PaneSection>
   )
 }
 
@@ -197,17 +171,25 @@ function MessageRow({
       )}
       <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
         {message.views_count > 0 && (
-          <span className="flex items-center gap-1" title="Views (reported to admins only)">
+          <span
+            className="flex items-center gap-1"
+            title="Dilihat (hanya dilaporkan ke admin)"
+            aria-label={`${message.views_count} dilihat`}
+          >
             <Eye className="size-3.5" />
             {message.views_count}
           </span>
         )}
-        <span className="flex items-center gap-1" title="Forwards">
+        <span
+          className="flex items-center gap-1"
+          title="Diteruskan"
+          aria-label={`${message.forwards_count} diteruskan`}
+        >
           <Forward className="size-3.5" />
           {message.forwards_count}
         </span>
         {reactions.map(([emoji, count]) => (
-          <span key={emoji}>
+          <span key={emoji} title="Reaksi">
             {emoji} {count}
           </span>
         ))}
@@ -226,7 +208,7 @@ function NewsletterMedia({ newsletterId, serverId }: { newsletterId: string; ser
   const query = useQuery({
     queryKey: ['newsletter-media', device, newsletterId, serverId, connectionId],
     queryFn: trackedQueryFn(connectionId, () => downloadNewsletterMedia(newsletterId, serverId)),
-    enabled: open && connectionId !== null,
+    enabled: open && !!device && connectionId !== null,
     staleTime: Infinity,
     retry: false,
   })
@@ -235,18 +217,25 @@ function NewsletterMedia({ newsletterId, serverId }: { newsletterId: string; ser
     return (
       <Button variant="outline" size="sm" className="self-start" onClick={() => setOpen(true)}>
         <Download className="size-3.5" />
-        Download media
+        Unduh media
       </Button>
     )
   }
 
-  if (query.isLoading) return <Loader2 className="text-muted-foreground size-4 animate-spin" />
+  if (query.isLoading)
+    return (
+      <Loader2
+        className="text-muted-foreground size-4 animate-spin"
+        role="status"
+        aria-label="Memuat…"
+      />
+    )
 
   if (query.isError || !query.data) {
     return (
       <div className="flex items-center gap-2">
         <p className="text-destructive text-xs">
-          {query.error ? toApiError(query.error).message : 'Download failed'}
+          {query.error ? toApiError(query.error).message : 'Gagal mengunduh media'}
         </p>
         <Button
           variant="outline"
@@ -254,7 +243,7 @@ function NewsletterMedia({ newsletterId, serverId }: { newsletterId: string; ser
           disabled={query.isFetching}
           onClick={() => void query.refetch()}
         >
-          Retry
+          Coba lagi
         </Button>
       </div>
     )
@@ -271,7 +260,7 @@ function NewsletterMedia({ newsletterId, serverId }: { newsletterId: string; ser
     <audio src={src} controls />
   ) : (
     <a href={src} target="_blank" rel="noreferrer" className="text-primary text-sm underline">
-      {query.data.filename || 'Download file'} · {formatBytes(query.data.file_size)}
+      {query.data.filename || 'Unduh berkas'} · {formatBytes(query.data.file_size)}
     </a>
   )
 }

@@ -12,7 +12,7 @@ export function AvatarForm() {
   const [isPreview, setIsPreview] = useState(false)
   const [isCommunity, setIsCommunity] = useState(false)
 
-  const mutation = useActionMutation(getUserAvatar, { successMessage: 'Avatar fetched' })
+  const mutation = useActionMutation(getUserAvatar, { successMessage: 'Foto profil diambil' })
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -27,22 +27,22 @@ export function AvatarForm() {
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <label className="flex items-center gap-2 text-sm">
         <Switch checked={isPreview} onCheckedChange={setIsPreview} />
-        Preview (smaller image)
+        Pratinjau (gambar lebih kecil)
       </label>
       {isGroup && (
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={isCommunity} onCheckedChange={setIsCommunity} />
-          Community group
+          Grup komunitas
         </label>
       )}
       <Button type="submit" disabled={mutation.isPending || !jid} className="self-start">
         {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-        Fetch avatar
+        Ambil foto profil
       </Button>
       {mutation.data?.url && (
         <img
           src={mutation.data.url}
-          alt="Profile"
+          alt="Foto profil"
           className="max-h-64 self-start rounded-md border"
         />
       )}

@@ -20,7 +20,7 @@ export function SendTextForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendText, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Message sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Pesan terkirim'),
     onSuccess: () => {
       setMessage('')
       setReplyId('')
@@ -45,7 +45,7 @@ export function SendTextForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="text-message">Message</Label>
+        <Label htmlFor="text-message">Pesan</Label>
         <Textarea
           id="text-message"
           rows={4}
@@ -55,7 +55,7 @@ export function SendTextForm() {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="text-reply">Reply to message ID (optional)</Label>
+        <Label htmlFor="text-reply">Balas ke Message ID (opsional)</Label>
         <Input
           id="text-reply"
           value={replyId}
@@ -65,12 +65,12 @@ export function SendTextForm() {
       {statusRecipient && (
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={allowReshare} onCheckedChange={setAllowReshare} />
-          Allow resharing
+          Izinkan dibagikan ulang
         </label>
       )}
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send message"
+        submitLabel="Kirim pesan"
         pending={mutation.isPending}
         disabled={!jid}
         request={textRequest(payload)}

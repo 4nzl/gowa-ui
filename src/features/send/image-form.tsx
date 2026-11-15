@@ -23,7 +23,7 @@ export function SendImageForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendImage, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Image sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Gambar terkirim'),
     onSuccess: () => {
       setSource({ url: '' })
       setCaption('')
@@ -54,9 +54,9 @@ export function SendImageForm() {
 
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-      <FileOrUrlInput label="Image" accept="image/*" value={source} onChange={setSource} />
+      <FileOrUrlInput label="Gambar" accept="image/*" value={source} onChange={setSource} />
       <div className="flex flex-col gap-2">
-        <Label htmlFor="image-caption">Caption</Label>
+        <Label htmlFor="image-caption">Keterangan</Label>
         <Input
           id="image-caption"
           value={caption}
@@ -65,18 +65,18 @@ export function SendImageForm() {
       </div>
       <label className="flex items-center gap-2 text-sm">
         <Switch checked={viewOnce} onCheckedChange={setViewOnce} />
-        View once
+        View once (sekali lihat)
       </label>
       {statusRecipient && (
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={allowReshare} onCheckedChange={setAllowReshare} />
-          Allow resharing
+          Izinkan dibagikan ulang
         </label>
       )}
       <MediaQualityField value={quality} onChange={setQuality} />
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send image"
+        submitLabel="Kirim gambar"
         pending={mutation.isPending}
         disabled={!jid}
         request={imageRequest(payload)}

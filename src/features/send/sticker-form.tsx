@@ -17,7 +17,7 @@ export function SendStickerForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendSticker, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Sticker sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Stiker terkirim'),
     onSuccess: () => {
       setSource({ url: '' })
       setReplyId('')
@@ -40,9 +40,9 @@ export function SendStickerForm() {
 
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-      <FileOrUrlInput label="Sticker" accept="image/*" value={source} onChange={setSource} />
+      <FileOrUrlInput label="Stiker" accept="image/*" value={source} onChange={setSource} />
       <div className="flex flex-col gap-2">
-        <Label htmlFor="sticker-reply">Reply to message ID (optional)</Label>
+        <Label htmlFor="sticker-reply">Balas ke Message ID (opsional)</Label>
         <Input
           id="sticker-reply"
           value={replyId}
@@ -51,7 +51,7 @@ export function SendStickerForm() {
       </div>
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send sticker"
+        submitLabel="Kirim stiker"
         pending={mutation.isPending}
         disabled={!jid}
         request={stickerRequest(payload)}

@@ -1,12 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 import { History } from 'lucide-react'
 import { IdText } from '@/components/shared/id-text'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
@@ -18,20 +18,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { composeJid, isStatus, recipientOptions, type RecipientType } from '@/lib/jid'
+import { composeJid, isStatus, type RecipientType } from '@/lib/jid'
+import { cn } from '@/lib/utils'
+import {
+  RECIPIENT_TYPE_LABELS,
+  localizedRecipientOptions,
+} from '@/features/messaging/recipient-labels'
 import { useRecipientStore } from '@/stores/recipient'
 
 /**
  * The shared recipient bar: entered once here, consumed by every form that
  * calls useRecipientJid(). Used by the Messaging and Account workspaces.
  */
-export function RecipientBar({ showStatus = true }: { showStatus?: boolean }) {
+export function RecipientBar({
+  showStatus = true,
+  className,
+}: {
+  showStatus?: boolean
+  className?: string
+}) {
   const recipient = useRecipientStore((state) => state.recipient)
   const recents = useRecipientStore((state) => state.recents)
   const setRecipient = useRecipientStore((state) => state.setRecipient)
   const pushRecent = useRecipientStore((state) => state.pushRecent)
-  const options = recipientOptions.filter((option) => showStatus || option.value !== 'status')
+  const options = localizedRecipientOptions(showStatus)
   const jid = composeJid(recipient.phone, recipient.type)
+  const id = useId()
 
   useEffect(() => {
     if (!showStatus && isStatus(recipient.type)) {
@@ -40,15 +52,18 @@ export function RecipientBar({ showStatus = true }: { showStatus?: boolean }) {
   }, [showStatus, recipient, setRecipient])
 
   return (
-    <Card>
-      <CardContent className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-2">
-          <Label>Recipient type</Label>
+    <section
+      aria-label="Penerima"
+      className={cn('bg-card tab:p-5 flex flex-col gap-3 rounded-xl border p-4', className)}
+    >
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="max-tab:w-full flex flex-col gap-2">
+          <Label htmlFor={`${id}-type`}>Jenis penerima</Label>
           <Select
             value={recipient.type}
             onValueChange={(type) => setRecipient({ ...recipient, type: type as RecipientType })}
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger id={`${id}-type`} className="tab:w-48 w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -63,10 +78,12 @@ export function RecipientBar({ showStatus = true }: { showStatus?: boolean }) {
 
         {!isStatus(recipient.type) && (
           <div className="flex min-w-48 flex-1 flex-col gap-2">
-            <Label htmlFor="recipient-phone">Phone / Group ID</Label>
+            <Label htmlFor="recipient-phone">Nomor / ID grup / JID</Label>
             <Input
               id="recipient-phone"
               placeholder="628xxxxxxxxxx"
+              inputMode="text"
+              autoComplete="off"
               value={recipient.phone}
               onChange={(event) => setRecipient({ ...recipient, phone: event.target.value })}
               onBlur={() => pushRecent(recipient)}
@@ -77,32 +94,40 @@ export function RecipientBar({ showStatus = true }: { showStatus?: boolean }) {
         {recents.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Recent recipients">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Penerima terakhir"
+                title="Penerima terakhir"
+              >
                 <History className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="max-w-[min(22rem,calc(100vw-2rem))]">
+              <DropdownMenuLabel>Penerima terakhir</DropdownMenuLabel>
               {recents.map((recent) => (
                 <DropdownMenuItem
                   key={`${recent.type}:${recent.phone}`}
                   onClick={() => setRecipient(recent)}
                 >
-                  <span className="font-mono text-xs">{recent.phone}</span>
-                  <span className="text-muted-foreground ml-auto text-xs">
-                    {recipientOptions.find((option) => option.value === recent.type)?.label}
+                  <span className="truncate font-mono text-xs">{recent.phone}</span>
+                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                    {RECIPIENT_TYPE_LABELS[recent.type]}
                   </span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+      </div>
 
-        {jid && (
-          <div className="w-full">
-            <IdText value={jid} />
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {jid ? (
+        <IdText value={jid} />
+      ) : (
+        <p className="text-muted-foreground text-xs">
+          Isi nomor atau ID penerima; tombol Kirim aktif setelah JID terbentuk.
+        </p>
+      )}
+    </section>
   )
 }

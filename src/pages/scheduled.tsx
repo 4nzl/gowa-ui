@@ -17,6 +17,16 @@ import {
   type ScheduledSend,
   type ScheduleStatus,
 } from '@/api/schedule'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { PageHeader } from '@/components/shared/page-header'
 import { Badge } from '@/components/ui/badge'
@@ -46,34 +56,15 @@ import { useActionMutation } from '@/hooks/use-action-mutation'
 import { toApiError } from '@/lib/api-error'
 import { formatDate } from '@/lib/format'
 import { usePrivateQuery } from '@/lib/private-query'
+import {
+  SCHEDULE_MESSAGE_TYPES,
+  SCHEDULE_STATUS_FILTERS,
+  SCHEDULE_STATUS_LABELS,
+  messageTypeLabel,
+  recurrenceLabel,
+} from '@/features/messaging/schedule-labels'
 
 const PAGE_SIZE = 25
-
-const STATUS_FILTERS: { value: ScheduleStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'running', label: 'Running' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'failed', label: 'Failed' },
-  { value: 'cancelled', label: 'Cancelled' },
-]
-
-// The eleven kinds a scheduled send can be, in the order the compose forms
-// present them.
-const MESSAGE_TYPES: { value: string; label: string }[] = [
-  { value: 'text', label: 'Text' },
-  { value: 'image', label: 'Image' },
-  { value: 'video', label: 'Video' },
-  { value: 'audio', label: 'Audio' },
-  { value: 'file', label: 'File' },
-  { value: 'sticker', label: 'Sticker' },
-  { value: 'contact', label: 'Contact' },
-  { value: 'link', label: 'Link' },
-  { value: 'location', label: 'Location' },
-  { value: 'poll', label: 'Poll' },
-  { value: 'forward', label: 'Forward' },
-]
 
 type ScheduleAction = 'pause' | 'resume' | 'cancel'
 
@@ -122,7 +113,7 @@ function ScheduleRow({
 }: {
   item: ScheduledSend
   busy: boolean
-  run: (action: ScheduleAction, id: string) => void
+  run: (action: ScheduleAction, item: ScheduledSend) => void
 }) {
   // Mirrors the server: a running send, or a finished one, takes no action.
   const canCancel = item.status === 'active' || item.status === 'paused' || item.status === 'failed'
@@ -131,12 +122,12 @@ function ScheduleRow({
     <TableRow>
       <TableCell className="max-w-[16rem] font-medium">
         <div className="truncate" title={item.phone}>
-          <span className="text-muted-foreground capitalize">{item.message_type}</span> ·{' '}
+          <span className="text-muted-foreground">{messageTypeLabel(item.message_type)}</span> ·{' '}
           {item.phone}
         </div>
       </TableCell>
       <TableCell className="max-w-[18rem]">
-        <div className="truncate">{item.summary || 'Scheduled message'}</div>
+        <div className="truncate">{item.summary || 'Pesan terjadwal'}</div>
         {item.last_error && (
           <div className="text-destructive truncate text-xs" title={item.last_error}>
             {item.last_error}
@@ -144,13 +135,15 @@ function ScheduleRow({
         )}
       </TableCell>
       <TableCell>
-        <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+        <Badge variant={statusVariant(item.status)}>
+          {SCHEDULE_STATUS_LABELS[item.status] ?? item.status}
+        </Badge>
       </TableCell>
       <TableCell className="text-muted-foreground hidden sm:table-cell">
-        {item.next_run_at ? formatDate(item.next_run_at) : 'No next run'}
+        {item.next_run_at ? formatDate(item.next_run_at) : 'Tidak ada'}
       </TableCell>
       <TableCell className="text-muted-foreground hidden lg:table-cell">
-        <div>{item.recurrence}</div>
+        <div>{recurrenceLabel(item.recurrence)}</div>
         {item.timezone && <div className="text-xs">{item.timezone}</div>}
       </TableCell>
       <TableCell className="text-muted-foreground hidden md:table-cell">
@@ -159,33 +152,33 @@ function ScheduleRow({
           {item.occurrence_limit ? `/${item.occurrence_limit}` : ''}
         </div>
         {/* Attempts only earn a slot once a run has actually failed. */}
-        {item.attempts > 0 && <div className="text-xs">{item.attempts} attempts</div>}
+        {item.attempts > 0 && <div className="text-xs">{item.attempts} percobaan</div>}
       </TableCell>
       <TableCell>
         <div className="flex justify-end gap-1">
           {item.status === 'paused' && (
             <IconAction
               icon={Play}
-              label="Resume"
+              label="Lanjutkan"
               disabled={busy}
-              onClick={() => run('resume', item.id)}
+              onClick={() => run('resume', item)}
             />
           )}
           {item.status === 'active' && (
             <IconAction
               icon={Pause}
-              label="Pause"
+              label="Jeda"
               disabled={busy}
-              onClick={() => run('pause', item.id)}
+              onClick={() => run('pause', item)}
             />
           )}
           {canCancel && (
             <IconAction
               icon={XCircle}
-              label="Cancel"
+              label="Batalkan"
               variant="destructive"
               disabled={busy}
-              onClick={() => run('cancel', item.id)}
+              onClick={() => run('cancel', item)}
             />
           )}
         </div>
@@ -200,6 +193,7 @@ function ScheduleTable({ device }: { device: string }) {
   const [search, setSearch] = useState('')
   const [messageType, setMessageType] = useState('all')
   const [offset, setOffset] = useState(0)
+  const [confirmCancel, setConfirmCancel] = useState<ScheduledSend | null>(null)
   const query = usePrivateQuery({
     queryKey: ['schedules', device, status, search, messageType, offset],
     queryFn: () =>
@@ -217,9 +211,9 @@ function ScheduleTable({ device }: { device: string }) {
   // Prefix key: an action changes the row's status, so every filtered view is stale.
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['schedules', device] })
 
-  const pause = useActionMutation(pauseSchedule, { successMessage: 'Schedule paused' })
-  const resume = useActionMutation(resumeSchedule, { successMessage: 'Schedule resumed' })
-  const cancel = useActionMutation(cancelSchedule, { successMessage: 'Schedule cancelled' })
+  const pause = useActionMutation(pauseSchedule, { successMessage: 'Jadwal dijeda' })
+  const resume = useActionMutation(resumeSchedule, { successMessage: 'Jadwal dilanjutkan' })
+  const cancel = useActionMutation(cancelSchedule, { successMessage: 'Jadwal dibatalkan' })
 
   // The three mutations live here rather than per row, so the hook count stays
   // flat as the page fills. Rows read back the id in flight to disable only
@@ -232,12 +226,12 @@ function ScheduleTable({ device }: { device: string }) {
         ? cancel.variables
         : undefined
 
-  const run = (action: ScheduleAction, id: string) => {
-    // Refresh on failure too: a 400 means the row moved on, so re-sync it.
-    const options = { onSettled: refresh }
-    if (action === 'pause') pause.mutate(id, options)
-    else if (action === 'resume') resume.mutate(id, options)
-    else if (window.confirm('Cancel this schedule?')) cancel.mutate(id, options)
+  // Refresh on failure too: a 400 means the row moved on, so re-sync it.
+  const options = { onSettled: refresh }
+  const run = (action: ScheduleAction, item: ScheduledSend) => {
+    if (action === 'pause') pause.mutate(item.id, options)
+    else if (action === 'resume') resume.mutate(item.id, options)
+    else setConfirmCancel(item)
   }
 
   const rows = query.data?.data ?? []
@@ -246,8 +240,8 @@ function ScheduleTable({ device }: { device: string }) {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Scheduled"
-        description="Delayed and recurring WhatsApp sends for the selected device."
+        title="Pesan terjadwal"
+        description="Pengiriman WhatsApp tertunda dan berulang untuk perangkat yang dipilih."
         actions={
           <ToggleGroup
             type="single"
@@ -261,7 +255,7 @@ function ScheduleTable({ device }: { device: string }) {
               setOffset(0)
             }}
           >
-            {STATUS_FILTERS.map((filter) => (
+            {SCHEDULE_STATUS_FILTERS.map((filter) => (
               <ToggleGroupItem key={filter.value} value={filter.value}>
                 {filter.label}
               </ToggleGroupItem>
@@ -274,7 +268,8 @@ function ScheduleTable({ device }: { device: string }) {
           <Search className="text-muted-foreground absolute top-2.5 left-2 size-4" />
           <Input
             className="pl-8"
-            placeholder="Search recipient or message"
+            aria-label="Cari penerima atau pesan"
+            placeholder="Cari penerima atau pesan"
             value={search}
             onChange={(event) => {
               setSearch(event.target.value)
@@ -289,12 +284,12 @@ function ScheduleTable({ device }: { device: string }) {
             setOffset(0)
           }}
         >
-          <SelectTrigger className="w-44" aria-label="Message type">
+          <SelectTrigger className="w-44" aria-label="Jenis pesan">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {MESSAGE_TYPES.map((type) => (
+            <SelectItem value="all">Semua jenis</SelectItem>
+            {SCHEDULE_MESSAGE_TYPES.map((type) => (
               <SelectItem key={type.value} value={type.value}>
                 {type.label}
               </SelectItem>
@@ -305,7 +300,7 @@ function ScheduleTable({ device }: { device: string }) {
       {query.error && (
         <Card className="border-destructive/50">
           <CardContent className="text-destructive py-4 text-sm">
-            {toApiError(query.error).message}
+            Gagal memuat jadwal: {toApiError(query.error).message}
           </CardContent>
         </Card>
       )}
@@ -319,11 +314,11 @@ function ScheduleTable({ device }: { device: string }) {
       {query.data && rows.length === 0 && (
         <EmptyState
           icon={CalendarClock}
-          title="No schedules"
+          title="Belum ada jadwal"
           hint={
             status === 'all' && messageType === 'all' && !search
-              ? 'Use Send later from a message form to create one.'
-              : 'Nothing matches these filters. Widen the search, status, or type.'
+              ? 'Aktifkan “Jadwalkan atau ulangi” di formulir Messaging untuk membuatnya.'
+              : 'Tidak ada yang cocok dengan filter ini. Longgarkan pencarian, status, atau jenis.'
           }
         />
       )}
@@ -332,13 +327,13 @@ function ScheduleTable({ device }: { device: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>To</TableHead>
-                <TableHead>Message</TableHead>
+                <TableHead>Penerima</TableHead>
+                <TableHead>Pesan</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="hidden sm:table-cell">Next run</TableHead>
-                <TableHead className="hidden lg:table-cell">Repeats</TableHead>
-                <TableHead className="hidden md:table-cell">Sent</TableHead>
-                <TableHead className="sr-only">Actions</TableHead>
+                <TableHead className="hidden sm:table-cell">Kirim berikutnya</TableHead>
+                <TableHead className="hidden lg:table-cell">Ulangi</TableHead>
+                <TableHead className="hidden md:table-cell">Terkirim</TableHead>
+                <TableHead className="sr-only">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -353,7 +348,7 @@ function ScheduleTable({ device }: { device: string }) {
       {(total > PAGE_SIZE || offset > 0) && (
         <div className="flex items-center justify-between gap-2">
           <p className="text-muted-foreground text-sm">
-            {offset + 1}–{offset + rows.length} of {total}
+            {offset + 1}–{offset + rows.length} dari {total}
           </p>
           <div className="flex gap-2">
             <Button
@@ -363,7 +358,7 @@ function ScheduleTable({ device }: { device: string }) {
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             >
               <ChevronLeft data-icon="inline-start" />
-              Previous
+              Sebelumnya
             </Button>
             <Button
               variant="outline"
@@ -371,19 +366,58 @@ function ScheduleTable({ device }: { device: string }) {
               disabled={offset + PAGE_SIZE >= total}
               onClick={() => setOffset(offset + PAGE_SIZE)}
             >
-              Next
+              Berikutnya
               <ChevronRight data-icon="inline-end" />
             </Button>
           </div>
         </div>
       )}
+      <AlertDialog
+        open={confirmCancel !== null}
+        onOpenChange={(open) => !open && setConfirmCancel(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Batalkan jadwal ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmCancel
+                ? `${messageTypeLabel(confirmCancel.message_type)} ke ${confirmCancel.phone}`
+                : ''}
+              {confirmCancel?.summary ? ` — “${confirmCancel.summary}”` : ''}. Pengiriman berikutnya
+              tidak akan dijalankan dan jadwal yang dibatalkan tidak bisa dilanjutkan lagi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Kembali</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={() => {
+                if (confirmCancel) cancel.mutate(confirmCancel.id, options)
+                setConfirmCancel(null)
+              }}
+            >
+              Batalkan jadwal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
 
 export default function ScheduledPage() {
   const device = useSelectedDevice()
-  if (!device) return <DeviceGuard />
+  if (!device) {
+    return (
+      <>
+        <PageHeader
+          title="Pesan terjadwal"
+          description="Pengiriman WhatsApp tertunda dan berulang untuk perangkat yang dipilih."
+        />
+        <DeviceGuard />
+      </>
+    )
+  }
   // Remount on device switch so the filter and page reset with the data.
   return <ScheduleTable key={device} device={device} />
 }

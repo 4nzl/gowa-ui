@@ -36,7 +36,7 @@ import { useAppInfo } from '@/hooks/use-app-info'
 
 export type ScheduleDraft = ScheduleFields
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEKDAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 const ALL_WEEKDAYS = WEEKDAYS.map((_, day) => day)
 
 /** How far ahead the year dropdown reaches; react-day-picker stops at the current year without it. */
@@ -124,7 +124,7 @@ function DateTimeField({
                   ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone }).format(
                       selected,
                     )
-                  : 'Select date'}
+                  : 'Pilih tanggal'}
               </span>
             </Button>
           </PopoverTrigger>
@@ -144,7 +144,7 @@ function DateTimeField({
         </Popover>
         <Input
           type="time"
-          aria-label={`${label} time`}
+          aria-label={`${label}: jam`}
           value={toTimeInput(selected)}
           onChange={(event) => pickTime(event.target.value)}
           disabled={!selected}
@@ -157,7 +157,7 @@ function DateTimeField({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={`Clear ${label.toLowerCase()}`}
+            aria-label={`Hapus ${label.toLowerCase()}`}
             onClick={() => onChange(undefined)}
           >
             <XIcon />
@@ -174,7 +174,7 @@ function TimezoneField({ value, onChange }: { value: string; onChange: (zone: st
 
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor="schedule-timezone">Timezone</Label>
+      <Label htmlFor="schedule-timezone">Zona waktu</Label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -190,9 +190,9 @@ function TimezoneField({ value, onChange }: { value: string; onChange: (zone: st
         </PopoverTrigger>
         <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
           <Command defaultValue={value}>
-            <CommandInput placeholder="Search timezone..." />
+            <CommandInput placeholder="Cari zona waktu…" />
             <CommandList>
-              <CommandEmpty>No timezone found.</CommandEmpty>
+              <CommandEmpty>Zona waktu tidak ditemukan.</CommandEmpty>
               <CommandGroup>
                 {zones.map((zone) => (
                   <CommandItem
@@ -297,7 +297,7 @@ export function ScheduleFields({
           onCheckedChange={(checked) => enable(checked === true)}
         />
         <Label htmlFor="schedule-enabled" className="font-medium">
-          Send later or repeat
+          Jadwalkan atau ulangi
         </Label>
       </div>
       {enabled && (
@@ -305,7 +305,7 @@ export function ScheduleFields({
           <div className="grid gap-3 sm:grid-cols-2">
             <DateTimeField
               id="schedule-at"
-              label="First send"
+              label="Kirim pertama"
               value={draft.scheduled_at}
               onChange={(iso) => patch({ scheduled_at: iso, end_at: endAfter(draft.end_at, iso) })}
               min={now}
@@ -313,26 +313,26 @@ export function ScheduleFields({
               required
             />
             <div className="flex flex-col gap-2">
-              <Label>Recurrence</Label>
+              <Label htmlFor="schedule-recurrence">Ulangi</Label>
               <Select
                 value={recurrence}
                 onValueChange={(value) => changeRecurrence(value as ScheduleFields['recurrence'])}
               >
-                <SelectTrigger>
+                <SelectTrigger id="schedule-recurrence">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="once">Once</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="once">Sekali</SelectItem>
+                  <SelectItem value="daily">Harian</SelectItem>
+                  <SelectItem value="weekly">Mingguan</SelectItem>
+                  <SelectItem value="monthly">Bulanan</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           {(recurrence === 'daily' || recurrence === 'weekly') && (
             <div className="flex flex-col gap-2">
-              <Label>Weekdays</Label>
+              <Label>Hari</Label>
               <ToggleGroup
                 type="multiple"
                 variant="outline"
@@ -350,7 +350,7 @@ export function ScheduleFields({
           )}
           {recurrence === 'monthly' && (
             <div className="flex flex-col gap-2 sm:max-w-xs">
-              <Label htmlFor="schedule-day">Day of month</Label>
+              <Label htmlFor="schedule-day">Tanggal setiap bulan</Label>
               <Input
                 id="schedule-day"
                 type="number"
@@ -369,7 +369,7 @@ export function ScheduleFields({
               <>
                 <DateTimeField
                   id="schedule-end"
-                  label="End date (optional)"
+                  label="Berakhir (opsional)"
                   value={draft.end_at}
                   onChange={(iso) => patch({ end_at: iso })}
                   min={firstSend && firstSend > now ? firstSend : now}
@@ -377,20 +377,20 @@ export function ScheduleFields({
                 />
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="schedule-count">Occurrences (optional)</Label>
+                    <Label htmlFor="schedule-count">Jumlah kali (opsional)</Label>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          aria-label="What are occurrences?"
+                          aria-label="Apa itu jumlah kali?"
                           className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-3"
                         >
                           <InfoIcon className="size-3.5" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        Stop the schedule after this many sends. Leave it empty to keep repeating
-                        until the end date, or until you pause it.
+                        Hentikan jadwal setelah terkirim sebanyak ini. Kosongkan agar terus diulang
+                        sampai tanggal berakhir, atau sampai Anda menjedanya.
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -409,7 +409,8 @@ export function ScheduleFields({
             <TimezoneField value={localTimezone} onChange={changeTimezone} />
           </div>
           <p className="text-muted-foreground text-xs">
-            Times use {localTimezone}. Uploaded media is stored on the server for delayed delivery.
+            Waktu memakai zona {localTimezone}. Media yang diunggah disimpan di server untuk
+            pengiriman tertunda.
           </p>
         </>
       )}

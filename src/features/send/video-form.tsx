@@ -24,7 +24,7 @@ export function SendVideoForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendVideo, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Video sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Video terkirim'),
     onSuccess: () => {
       setSource({ url: '' })
       setCaption('')
@@ -59,7 +59,7 @@ export function SendVideoForm() {
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <FileOrUrlInput label="Video" accept="video/*" value={source} onChange={setSource} />
       <div className="flex flex-col gap-2">
-        <Label htmlFor="video-caption">Caption</Label>
+        <Label htmlFor="video-caption">Keterangan</Label>
         <Input
           id="video-caption"
           value={caption}
@@ -68,22 +68,22 @@ export function SendVideoForm() {
       </div>
       <label className="flex items-center gap-2 text-sm">
         <Switch checked={viewOnce} onCheckedChange={setViewOnce} />
-        View once
+        View once (sekali lihat)
       </label>
       {statusRecipient && (
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={allowReshare} onCheckedChange={setAllowReshare} />
-          Allow resharing
+          Izinkan dibagikan ulang
         </label>
       )}
       <MediaQualityField value={quality} onChange={setQuality} />
       <label className="flex items-center gap-2 text-sm">
         <Switch checked={gifPlayback} onCheckedChange={setGifPlayback} />
-        GIF playback
+        Putar sebagai GIF
       </label>
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send video"
+        submitLabel="Kirim video"
         pending={mutation.isPending}
         disabled={!jid}
         request={videoRequest(payload)}

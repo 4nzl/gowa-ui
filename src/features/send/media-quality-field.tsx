@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/select'
 
 const descriptions: Record<MediaQuality, string> = {
-  standard: 'Optimized for smaller uploads.',
-  hd: 'Higher resolution with a larger upload.',
-  original: 'Send the original file without compression.',
+  standard: 'Dioptimalkan agar unggahan lebih kecil.',
+  hd: 'Resolusi lebih tinggi dengan unggahan lebih besar.',
+  original: 'Kirim berkas asli tanpa kompresi.',
 }
 
 export function MediaQualityField({
@@ -27,15 +27,15 @@ export function MediaQualityField({
 
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor={controlId}>Media quality</Label>
+      <Label htmlFor={controlId}>Kualitas media</Label>
       <Select value={value} onValueChange={(next) => onChange(next as MediaQuality)}>
         <SelectTrigger id={controlId} aria-describedby={descriptionId} className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="standard">Standard</SelectItem>
+          <SelectItem value="standard">Standar</SelectItem>
           <SelectItem value="hd">HD</SelectItem>
-          <SelectItem value="original">Original</SelectItem>
+          <SelectItem value="original">Asli</SelectItem>
         </SelectContent>
       </Select>
       <p id={descriptionId} className="text-muted-foreground text-xs">

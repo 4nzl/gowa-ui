@@ -16,7 +16,7 @@ export function SendLinkForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendLink, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Link sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Tautan terkirim'),
     onSuccess: () => {
       setLink('')
       setCaption('')
@@ -39,7 +39,7 @@ export function SendLinkForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="link-url">Link</Label>
+        <Label htmlFor="link-url">Tautan</Label>
         <Input
           id="link-url"
           placeholder="https://example.com"
@@ -49,7 +49,7 @@ export function SendLinkForm() {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="link-caption">Caption</Label>
+        <Label htmlFor="link-caption">Keterangan</Label>
         <Input
           id="link-caption"
           value={caption}
@@ -58,7 +58,7 @@ export function SendLinkForm() {
       </div>
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send link"
+        submitLabel="Kirim tautan"
         pending={mutation.isPending}
         disabled={!jid}
         request={linkRequest(payload)}

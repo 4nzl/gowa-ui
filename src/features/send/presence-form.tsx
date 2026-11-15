@@ -15,7 +15,7 @@ import { useActionMutation } from '@/hooks/use-action-mutation'
 export function SendPresenceForm() {
   const [type, setType] = useState('available')
 
-  const mutation = useActionMutation(sendPresence, { successMessage: 'Presence updated' })
+  const mutation = useActionMutation(sendPresence, { successMessage: 'Presence diperbarui' })
 
   const payload = { type }
 
@@ -27,19 +27,19 @@ export function SendPresenceForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <div className="flex flex-col gap-2">
-        <Label>Presence</Label>
+        <Label htmlFor="presence-type">Status presence</Label>
         <Select value={type} onValueChange={setType}>
-          <SelectTrigger>
+          <SelectTrigger id="presence-type">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="available">Available</SelectItem>
-            <SelectItem value="unavailable">Unavailable</SelectItem>
+            <SelectItem value="available">Tersedia (available)</SelectItem>
+            <SelectItem value="unavailable">Tidak tersedia (unavailable)</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <FormActions
-        submitLabel="Update presence"
+        submitLabel="Perbarui presence"
         pending={mutation.isPending}
         disabled={false}
         request={presenceRequest(payload)}

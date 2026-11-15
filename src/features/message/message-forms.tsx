@@ -80,17 +80,18 @@ export function ReactForm({ messageId }: MessageActionProps) {
   return (
     <MessageActionForm
       messageId={messageId}
-      submitLabel="Send reaction"
-      successMessage="Reaction sent"
+      submitLabel="Kirim reaksi"
+      successMessage="Reaksi terkirim"
       extraValid={emoji.trim().length > 0}
       request={(id, phone) => reactRequest(id, { phone, emoji })}
     >
       <div className="flex flex-col gap-2">
-        <Label>Emoji</Label>
+        <Label htmlFor="react-emoji">Emoji</Label>
         <Input
+          id="react-emoji"
           value={emoji}
           onChange={(event) => setEmoji(event.target.value)}
-          placeholder="👍 (empty removes the reaction)"
+          placeholder="👍"
         />
       </div>
     </MessageActionForm>
@@ -102,14 +103,19 @@ export function UpdateForm({ messageId }: MessageActionProps) {
   return (
     <MessageActionForm
       messageId={messageId}
-      submitLabel="Update message"
-      successMessage="Message updated"
+      submitLabel="Simpan perubahan"
+      successMessage="Pesan diperbarui"
       extraValid={message.trim().length > 0}
       request={(id, phone) => updateRequest(id, { phone, message })}
     >
       <div className="flex flex-col gap-2">
-        <Label>New text</Label>
-        <Textarea rows={3} value={message} onChange={(event) => setMessage(event.target.value)} />
+        <Label htmlFor="update-message">Teks baru</Label>
+        <Textarea
+          id="update-message"
+          rows={3}
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+        />
       </div>
     </MessageActionForm>
   )
@@ -119,8 +125,8 @@ export function DeleteForm({ messageId }: MessageActionProps) {
   return (
     <MessageActionForm
       messageId={messageId}
-      submitLabel="Delete for everyone"
-      successMessage="Message deleted"
+      submitLabel="Hapus untuk saya"
+      successMessage="Pesan dihapus untuk Anda"
       request={(id, phone) => deleteRequest(id, { phone })}
     />
   )
@@ -130,8 +136,8 @@ export function RevokeForm({ messageId }: MessageActionProps) {
   return (
     <MessageActionForm
       messageId={messageId}
-      submitLabel="Revoke message"
-      successMessage="Message revoked"
+      submitLabel="Tarik pesan"
+      successMessage="Pesan ditarik untuk semua orang"
       request={(id, phone) => revokeRequest(id, { phone })}
     />
   )
@@ -141,8 +147,8 @@ export function ReadForm({ messageId }: MessageActionProps) {
   return (
     <MessageActionForm
       messageId={messageId}
-      submitLabel="Mark as read"
-      successMessage="Marked as read"
+      submitLabel="Tandai dibaca"
+      successMessage="Ditandai dibaca"
       request={(id, phone) => readRequest(id, { phone })}
     />
   )
@@ -152,8 +158,8 @@ export function PlayedForm({ messageId }: MessageActionProps) {
   return (
     <MessageActionForm
       messageId={messageId}
-      submitLabel="Mark as played"
-      successMessage="Played receipt sent"
+      submitLabel="Tandai diputar"
+      successMessage="Tanda diputar terkirim"
       request={(id, phone) => playedRequest(id, { phone })}
     />
   )
@@ -164,8 +170,8 @@ export function StarForm({ messageId }: MessageActionProps) {
   return (
     <MessageActionForm
       messageId={messageId}
-      submitLabel={starred ? 'Star message' : 'Unstar message'}
-      successMessage={starred ? 'Message starred' : 'Message unstarred'}
+      submitLabel={starred ? 'Beri bintang' : 'Lepas bintang'}
+      successMessage={starred ? 'Pesan diberi bintang' : 'Bintang dilepas'}
       request={(id, phone) => (starred ? starRequest(id, { phone }) : unstarRequest(id, { phone }))}
     >
       <div className="flex gap-2">
@@ -175,7 +181,7 @@ export function StarForm({ messageId }: MessageActionProps) {
           variant={starred ? 'default' : 'outline'}
           onClick={() => setStarred(true)}
         >
-          Star
+          Bintang
         </Button>
         <Button
           type="button"
@@ -183,7 +189,7 @@ export function StarForm({ messageId }: MessageActionProps) {
           variant={!starred ? 'default' : 'outline'}
           onClick={() => setStarred(false)}
         >
-          Unstar
+          Lepas bintang
         </Button>
       </div>
     </MessageActionForm>
@@ -196,8 +202,8 @@ export function ForwardForm({ messageId }: MessageActionProps) {
   return (
     <MessageActionForm
       messageId={messageId}
-      submitLabel="Forward message"
-      successMessage="Message forwarded"
+      submitLabel="Teruskan pesan"
+      successMessage="Pesan diteruskan"
       onSuccess={reset}
       request={(id, phone) => forwardRequest(id, { phone, force_reupload: reupload, ...draft })}
     >
@@ -207,7 +213,7 @@ export function ForwardForm({ messageId }: MessageActionProps) {
           checked={reupload}
           onChange={(event) => setReupload(event.target.checked)}
         />
-        Force re-upload media
+        Paksa unggah ulang media (force_reupload)
       </label>
       <ScheduleFields draft={draft} patch={patch} />
     </MessageActionForm>

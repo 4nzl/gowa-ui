@@ -5,6 +5,7 @@ import type { ApiRequest } from '@/api/request'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -35,28 +36,37 @@ function CurlDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const options = useCurlOptions()
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'full' | 'masked' | null>(null)
 
-  // Only render while open: bodies can carry large base64 images.
+  // Only render while open: bodies can carry large base64 images. The preview
+  // never shows the password; only the explicit "Salin" copies it.
   const masked = open ? toCurl(request, { ...options, revealSecrets: false }) : ''
   const secret = Boolean(options.username && options.password)
 
-  const copy = async () => {
-    await navigator.clipboard.writeText(toCurl(request, { ...options, revealSecrets: true }))
-    setCopied(true)
-    toast.success('cURL copied')
-    window.setTimeout(() => setCopied(false), 2_000)
+  const copy = async (kind: 'full' | 'masked') => {
+    try {
+      await navigator.clipboard.writeText(
+        toCurl(request, { ...options, revealSecrets: kind === 'full' }),
+      )
+    } catch {
+      toast.error('Gagal menyalin cURL ke clipboard')
+      return
+    }
+    setCopied(kind)
+    toast.success(kind === 'full' ? 'cURL tersalin' : 'cURL tersalin tanpa kata sandi')
+    window.setTimeout(() => setCopied(null), 2_000)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            cURL for {request.method} {request.path}
+          <DialogTitle className="break-all">
+            cURL untuk {request.method} {request.path}
           </DialogTitle>
           <DialogDescription>
-            The same request this form sends. Run it anywhere curl is installed.
+            Request yang sama dengan yang dikirim formulir ini. Jalankan di mana saja yang memiliki
+            curl.
           </DialogDescription>
         </DialogHeader>
         <pre className="bg-muted/50 max-h-80 overflow-auto rounded-lg border p-3 font-mono text-xs">
@@ -64,14 +74,30 @@ function CurlDialog({
         </pre>
         {(secret || hasFileField(request)) && (
           <ul className="text-muted-foreground flex flex-col gap-1 text-xs">
-            {secret && <li>Your password is hidden here — the copied command contains it.</li>}
-            {hasFileField(request) && <li>Replace the filename after @ with the path on disk.</li>}
+            {secret && (
+              <li>
+                Kata sandi disamarkan di sini. Tombol Salin menyertakan kata sandi asli agar
+                perintah langsung jalan; pakai “Salin tanpa sandi” untuk dibagikan.
+              </li>
+            )}
+            {hasFileField(request) && (
+              <li>Ganti nama berkas setelah @ dengan path berkas di disk.</li>
+            )}
           </ul>
         )}
-        <DialogFooter showCloseButton>
-          <Button onClick={copy}>
-            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-            {copied ? 'Copied' : 'Copy'}
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Tutup</Button>
+          </DialogClose>
+          {secret && (
+            <Button variant="outline" onClick={() => void copy('masked')}>
+              {copied === 'masked' ? <Check className="size-4" /> : <Copy className="size-4" />}
+              {copied === 'masked' ? 'Tersalin' : 'Salin tanpa sandi'}
+            </Button>
+          )}
+          <Button onClick={() => void copy('full')}>
+            {copied === 'full' ? <Check className="size-4" /> : <Copy className="size-4" />}
+            {copied === 'full' ? 'Tersalin' : 'Salin'}
           </Button>
         </DialogFooter>
       </DialogContent>

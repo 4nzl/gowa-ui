@@ -32,25 +32,26 @@ const MAX_CARDS = 10
 const MAX_CARD_IMAGE_BYTES = 2_000_000
 
 const modeDescriptions: Record<Mode, string> = {
-  buttons: 'Up to 10 reply, link, copy, call or list buttons under the text.',
-  location: 'Asks the recipient to share their location.',
-  carousel: '2–10 swipeable cards, each with an optional image and its own buttons.',
+  buttons: 'Hingga 10 tombol balas, tautan, salin, telepon, atau daftar di bawah teks.',
+  location: 'Meminta penerima membagikan lokasinya.',
+  carousel:
+    '2–10 kartu yang bisa digeser, masing-masing dengan gambar opsional dan tombolnya sendiri.',
 }
 
 const kinds: Record<
   ButtonKind,
   { label: string; key: string; field: string; placeholder: string }
 > = {
-  quick_reply: { label: 'Quick reply', key: 'id', field: 'Reply ID', placeholder: 'confirm' },
-  cta_url: { label: 'Open URL', key: 'url', field: 'URL', placeholder: 'https://example.com' },
-  cta_copy: { label: 'Copy code', key: 'copy_code', field: 'Code', placeholder: 'PROMO2026' },
+  quick_reply: { label: 'Balas cepat', key: 'id', field: 'ID balasan', placeholder: 'confirm' },
+  cta_url: { label: 'Buka URL', key: 'url', field: 'URL', placeholder: 'https://example.com' },
+  cta_copy: { label: 'Salin kode', key: 'copy_code', field: 'Kode', placeholder: 'PROMO2026' },
   cta_call: {
-    label: 'Call',
+    label: 'Telepon',
     key: 'phone_number',
-    field: 'Phone number',
+    field: 'Nomor telepon',
     placeholder: '+15551234567',
   },
-  single_select: { label: 'List', key: '', field: 'Section title', placeholder: 'Options' },
+  single_select: { label: 'Daftar', key: '', field: 'Judul bagian', placeholder: 'Opsi' },
 }
 
 interface RowDraft {
@@ -147,18 +148,18 @@ function ButtonsEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <Label>Buttons</Label>
+      <Label>Tombol</Label>
       {buttons.map((button, index) => {
         const kind = kinds[button.name]
         const list = button.name === 'single_select'
         return (
           <div key={index} className="flex flex-col gap-2 rounded-md border p-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={button.name}
                 onValueChange={(name) => set(index, { name: name as ButtonKind, value: '' })}
               >
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="tab:w-40 w-full" aria-label="Jenis tombol">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -170,8 +171,9 @@ function ButtonsEditor({
                 </SelectContent>
               </Select>
               <Input
-                aria-label={list ? 'List button text' : 'Button text'}
-                placeholder={list ? 'List button text' : 'Button text'}
+                className="min-w-0 flex-1"
+                aria-label={list ? 'Teks tombol daftar' : 'Teks tombol'}
+                placeholder={list ? 'Teks tombol daftar' : 'Teks tombol'}
                 value={button.text}
                 onChange={(event) => set(index, { text: event.target.value })}
                 required
@@ -180,7 +182,7 @@ function ButtonsEditor({
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="Remove button"
+                aria-label="Hapus tombol"
                 onClick={() => onChange(buttons.filter((_, i) => i !== index))}
                 disabled={buttons.length <= 1}
               >
@@ -190,7 +192,7 @@ function ButtonsEditor({
             <Input
               aria-label={kind.field}
               placeholder={
-                list ? `${kind.field} (optional)` : `${kind.field} — ${kind.placeholder}`
+                list ? `${kind.field} (opsional)` : `${kind.field} — ${kind.placeholder}`
               }
               type={button.name === 'cta_url' ? 'url' : 'text'}
               value={button.value}
@@ -200,10 +202,10 @@ function ButtonsEditor({
             {list && (
               <div className="flex flex-col gap-2">
                 {button.rows.map((row, rowIndex) => (
-                  <div key={rowIndex} className="flex items-center gap-2">
+                  <div key={rowIndex} className="flex flex-wrap items-center gap-2">
                     <Input
-                      aria-label="Row ID"
-                      placeholder="Row ID"
+                      aria-label="ID baris"
+                      placeholder="ID baris"
                       className="w-28 font-mono"
                       value={row.id}
                       onChange={(event) =>
@@ -214,8 +216,9 @@ function ButtonsEditor({
                       required
                     />
                     <Input
-                      aria-label="Row title"
-                      placeholder="Title"
+                      className="min-w-32 flex-1"
+                      aria-label="Judul baris"
+                      placeholder="Judul"
                       value={row.title}
                       onChange={(event) =>
                         set(index, {
@@ -225,8 +228,9 @@ function ButtonsEditor({
                       required
                     />
                     <Input
-                      aria-label="Row description"
-                      placeholder="Description (optional)"
+                      className="min-w-40 flex-[2]"
+                      aria-label="Deskripsi baris"
+                      placeholder="Deskripsi (opsional)"
                       value={row.description}
                       onChange={(event) =>
                         set(index, {
@@ -238,7 +242,7 @@ function ButtonsEditor({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      aria-label="Remove row"
+                      aria-label="Hapus baris"
                       onClick={() =>
                         set(index, { rows: button.rows.filter((_, i) => i !== rowIndex) })
                       }
@@ -256,7 +260,7 @@ function ButtonsEditor({
                   onClick={() => set(index, { rows: [...button.rows, newRow()] })}
                 >
                   <Plus />
-                  Add row
+                  Tambah baris
                 </Button>
               </div>
             )}
@@ -272,7 +276,7 @@ function ButtonsEditor({
         disabled={buttons.length >= MAX_BUTTONS}
       >
         <Plus />
-        Add button
+        Tambah tombol
       </Button>
     </div>
   )
@@ -301,15 +305,15 @@ function CardsEditor({
     }
     if (!file) return setImage(undefined)
     if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-      return reject('Card images must be JPEG or PNG')
+      return reject('Gambar kartu harus JPEG atau PNG')
     }
-    if (file.size > MAX_CARD_IMAGE_BYTES) return reject('Card images must be 2 MB or smaller')
+    if (file.size > MAX_CARD_IMAGE_BYTES) return reject('Gambar kartu maksimal 2 MB')
     patchCard({ reading: true })
     try {
       const image = await readBase64(file)
       if (input.files?.[0] === file) setImage(image)
     } catch {
-      if (input.files?.[0] === file) reject("Couldn't read that image")
+      if (input.files?.[0] === file) reject('Gagal membaca gambar itu')
     }
   }
 
@@ -318,12 +322,12 @@ function CardsEditor({
       {cards.map((card, index) => (
         <div key={card.key} className="flex flex-col gap-3 rounded-lg border p-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Card {index + 1}</p>
+            <p className="text-sm font-medium">Kartu {index + 1}</p>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              aria-label="Remove card"
+              aria-label="Hapus kartu"
               onClick={() => onChange(cards.filter((_, i) => i !== index))}
               disabled={cards.length <= 2}
             >
@@ -331,7 +335,7 @@ function CardsEditor({
             </Button>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={`card-${card.key}-image`}>Image (optional, JPEG/PNG up to 2 MB)</Label>
+            <Label htmlFor={`card-${card.key}-image`}>Gambar (opsional, JPEG/PNG maks. 2 MB)</Label>
             <Input
               id={`card-${card.key}-image`}
               type="file"
@@ -340,15 +344,15 @@ function CardsEditor({
             />
           </div>
           <Input
-            aria-label="Card title"
-            placeholder="Title (optional)"
+            aria-label="Judul kartu"
+            placeholder="Judul (opsional)"
             maxLength={256}
             value={card.title}
             onChange={(event) => set(index, { title: event.target.value })}
           />
           <Textarea
-            aria-label="Card body"
-            placeholder="Body"
+            aria-label="Isi kartu"
+            placeholder="Isi"
             rows={2}
             maxLength={4096}
             value={card.body}
@@ -356,8 +360,8 @@ function CardsEditor({
             required
           />
           <Input
-            aria-label="Card footer"
-            placeholder="Footer (optional)"
+            aria-label="Footer kartu"
+            placeholder="Footer (opsional)"
             maxLength={256}
             value={card.footer}
             onChange={(event) => set(index, { footer: event.target.value })}
@@ -374,7 +378,7 @@ function CardsEditor({
         disabled={cards.length >= MAX_CARDS}
       >
         <Plus />
-        Add card
+        Tambah kartu
       </Button>
     </div>
   )
@@ -389,7 +393,7 @@ export function SendInteractiveForm() {
   const [cards, setCards] = useState<CardDraft[]>(() => [newCard(), newCard()])
 
   const mutation = useActionMutation(sendInteractive, {
-    successMessage: 'Interactive message sent',
+    successMessage: 'Pesan interaktif terkirim',
     onSuccess: () => {
       setBody('')
       setFooter('')
@@ -428,25 +432,25 @@ export function SendInteractiveForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <p className="text-muted-foreground text-xs">
-        Experimental: sent immediately (no scheduling), and WhatsApp clients may not render every
-        button type.
+        Eksperimental: dikirim langsung (tanpa penjadwalan), dan aplikasi WhatsApp mungkin tidak
+        menampilkan semua jenis tombol.
       </p>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="interactive-mode">Style</Label>
+        <Label htmlFor="interactive-mode">Gaya</Label>
         <Select value={mode} onValueChange={(value) => setMode(value as Mode)}>
           <SelectTrigger id="interactive-mode" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="buttons">Buttons</SelectItem>
-            <SelectItem value="location">Location request</SelectItem>
-            <SelectItem value="carousel">Image carousel</SelectItem>
+            <SelectItem value="buttons">Tombol</SelectItem>
+            <SelectItem value="location">Permintaan lokasi</SelectItem>
+            <SelectItem value="carousel">Carousel gambar</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-muted-foreground text-xs">{modeDescriptions[mode]}</p>
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="interactive-body">Body</Label>
+        <Label htmlFor="interactive-body">Isi pesan</Label>
         <Textarea
           id="interactive-body"
           rows={3}
@@ -457,7 +461,7 @@ export function SendInteractiveForm() {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="interactive-footer">Footer (optional)</Label>
+        <Label htmlFor="interactive-footer">Footer (opsional)</Label>
         <Input
           id="interactive-footer"
           maxLength={256}
@@ -468,7 +472,7 @@ export function SendInteractiveForm() {
       {mode === 'buttons' && <ButtonsEditor buttons={buttons} onChange={setButtons} />}
       {mode === 'carousel' && <CardsEditor cards={cards} onChange={setCards} />}
       <FormActions
-        submitLabel="Send interactive"
+        submitLabel="Kirim pesan interaktif"
         pending={mutation.isPending}
         disabled={!jid || (mode === 'carousel' && cards.some((card) => card.reading))}
         request={interactiveRequest(payload)}

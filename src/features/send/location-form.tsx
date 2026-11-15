@@ -16,7 +16,7 @@ export function SendLocationForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendLocation, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Location sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Lokasi terkirim'),
     onSuccess: () => {
       setLatitude('')
       setLongitude('')
@@ -60,7 +60,7 @@ export function SendLocationForm() {
       </div>
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send location"
+        submitLabel="Kirim lokasi"
         pending={mutation.isPending}
         disabled={!jid}
         request={locationRequest(payload)}

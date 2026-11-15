@@ -19,7 +19,7 @@ export function SendPollForm() {
   const { draft, patch, reset: resetSchedule } = useScheduleDraft()
 
   const mutation = useActionMutation(sendPoll, {
-    successMessage: (r) => (r.schedule_id ? r.status : 'Poll sent'),
+    successMessage: (r) => (r.schedule_id ? r.status : 'Polling terkirim'),
     onSuccess: () => {
       setQuestion('')
       setOptions(['', ''])
@@ -49,7 +49,7 @@ export function SendPollForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="poll-question">Question</Label>
+        <Label htmlFor="poll-question">Pertanyaan</Label>
         <Input
           id="poll-question"
           value={question}
@@ -58,11 +58,11 @@ export function SendPollForm() {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label>Options</Label>
+        <Label>Opsi</Label>
         {options.map((option, index) => (
           <div key={index} className="flex items-center gap-2">
             <Input
-              placeholder={`Option ${index + 1}`}
+              placeholder={`Opsi ${index + 1}`}
               value={option}
               onChange={(event) => setOption(index, event.target.value)}
             />
@@ -72,6 +72,7 @@ export function SendPollForm() {
               size="icon"
               onClick={() => removeOption(index)}
               disabled={options.length <= 2}
+              aria-label={`Hapus opsi ${index + 1}`}
             >
               <X />
             </Button>
@@ -85,11 +86,11 @@ export function SendPollForm() {
           onClick={addOption}
         >
           <Plus />
-          Add option
+          Tambah opsi
         </Button>
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="poll-max-answer">Max answers</Label>
+        <Label htmlFor="poll-max-answer">Maks. jawaban</Label>
         <Input
           id="poll-max-answer"
           type="number"
@@ -100,7 +101,7 @@ export function SendPollForm() {
       </div>
       <ScheduleFields draft={draft} patch={patch} />
       <FormActions
-        submitLabel="Send poll"
+        submitLabel="Kirim polling"
         pending={mutation.isPending}
         disabled={!jid}
         request={pollRequest(payload)}

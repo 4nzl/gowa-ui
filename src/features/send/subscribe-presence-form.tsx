@@ -8,7 +8,7 @@ import { useRecipientJid } from '@/stores/recipient'
 export function SubscribePresenceForm() {
   const jid = useRecipientJid()
   const mutation = useActionMutation(subscribePresence, {
-    successMessage: 'Subscribed to presence',
+    successMessage: 'Berlangganan presence',
   })
 
   const onSubmit = (event: FormEvent) => {
@@ -19,12 +19,12 @@ export function SubscribePresenceForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <p className="text-muted-foreground text-sm">
-        Subscribe this device to the contact&apos;s online/offline updates. They arrive as{' '}
-        <code className="font-mono text-xs">presence</code> webhooks, and only while this device is
-        marked available.
+        Langganankan perangkat ini ke status online/offline kontak. Pembaruan dikirim sebagai
+        webhook <code className="font-mono text-xs">presence</code>, dan hanya selama perangkat ini
+        berstatus tersedia (available).
       </p>
       <FormActions
-        submitLabel="Subscribe"
+        submitLabel="Pantau (subscribe)"
         pending={mutation.isPending}
         disabled={!jid}
         request={subscribePresenceRequest(jid)}

@@ -9,9 +9,9 @@ export const JID_TYPES = {
 export type RecipientType = keyof typeof JID_TYPES
 
 export const recipientOptions: { value: RecipientType; label: string }[] = [
-  { value: 'user', label: 'Private message' },
-  { value: 'group', label: 'Group' },
-  { value: 'newsletter', label: 'Newsletter' },
+  { value: 'user', label: 'Pesan pribadi' },
+  { value: 'group', label: 'Grup' },
+  { value: 'newsletter', label: 'Saluran (newsletter)' },
   { value: 'lid', label: 'LID (Linked ID)' },
   { value: 'status', label: 'Status' },
 ]

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -19,6 +19,7 @@ export function FileOrUrlInput({
   onChange: (value: FileOrUrl) => void
 }) {
   const fileInput = useRef<HTMLInputElement>(null)
+  const id = useId()
 
   // The file picker is uncontrolled, so clearing the selection in state has to
   // be mirrored onto the element or it keeps showing the old filename.
@@ -29,9 +30,10 @@ export function FileOrUrlInput({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
-        <Label>{label} — upload</Label>
+        <Label htmlFor={`${id}-file`}>{label}: unggah berkas</Label>
         <Input
           ref={fileInput}
+          id={`${id}-file`}
           type="file"
           accept={accept}
           onChange={(event) => onChange({ ...value, file: event.target.files?.[0] })}
@@ -39,8 +41,10 @@ export function FileOrUrlInput({
         {value.file && <p className="text-muted-foreground text-xs">{value.file.name}</p>}
       </div>
       <div className="flex flex-col gap-2">
-        <Label>…or {label.toLowerCase()} URL</Label>
+        <Label htmlFor={`${id}-url`}>…atau URL {label.toLowerCase()}</Label>
         <Input
+          id={`${id}-url`}
+          type="url"
           placeholder="https://example.com/media"
           value={value.url}
           onChange={(event) => onChange({ ...value, url: event.target.value })}

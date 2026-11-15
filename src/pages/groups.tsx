@@ -1,106 +1,94 @@
 import { useState } from 'react'
-import { Eye, Link, Plus } from 'lucide-react'
+import { Users } from 'lucide-react'
+import { listMyGroups } from '@/api/group'
+import { EmptyPane, ListDetailLayout, ListPaneHeader } from '@/components/layout/list-detail'
 import { PageHeader } from '@/components/shared/page-header'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { GroupActions } from '@/features/group/group-actions'
+import { GroupDetail } from '@/features/group/group-detail'
+import { selectedGroupJid, type GroupSelection } from '@/features/group/group-display'
+import { groupListKey } from '@/features/group/group-keys'
+import { GroupList } from '@/features/group/group-list'
 import { DeviceGuard, useSelectedDevice } from '@/hooks/use-device-guard'
-import { CreateGroupForm } from '@/features/group/create-group-form'
-import { GroupDetailSheet } from '@/features/group/group-detail-sheet'
-import { GroupDirectory } from '@/features/group/group-list'
-import { InfoFromLinkForm } from '@/features/group/info-from-link-form'
-import { JoinWithLinkForm } from '@/features/group/join-with-link-form'
-import type { MyGroup } from '@/api/group'
+import { usePrivateQuery } from '@/lib/private-query'
 
-function HeaderDialog({
-  trigger,
-  title,
-  description,
-  children,
-}: {
-  trigger: React.ReactNode
-  title: string
-  description: string
-  children: React.ReactNode
-}) {
+function GroupsWorkspace({ deviceId }: { deviceId: string }) {
+  const [selection, setSelection] = useState<GroupSelection | null>(null)
+  const selectedJid = selectedGroupJid(selection, deviceId)
+
+  const groups = usePrivateQuery({
+    queryKey: groupListKey(deviceId),
+    queryFn: listMyGroups,
+  })
+
+  const select = (jid: string) => setSelection({ deviceId, jid })
+  const clear = () => setSelection(null)
+  const selectedGroup = groups.data?.find((group) => group.JID === selectedJid)
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {children}
-      </DialogContent>
-    </Dialog>
+    <ListDetailLayout
+      listLabel="Daftar grup"
+      detailLabel="Detail grup"
+      detailOpen={selectedJid !== null}
+      list={
+        <>
+          <ListPaneHeader
+            title="Grup"
+            actions={
+              <GroupActions
+                deviceId={deviceId}
+                refreshing={groups.isFetching}
+                onRefresh={() => void groups.refetch()}
+                onOpenGroup={select}
+              />
+            }
+          />
+          <div className="min-h-0 flex-1">
+            <GroupList
+              groups={groups.data}
+              isLoading={groups.isLoading}
+              isFetching={groups.isFetching}
+              error={groups.error}
+              onRetry={() => void groups.refetch()}
+              selectedJid={selectedJid}
+              onSelect={(group) => select(group.JID)}
+            />
+          </div>
+        </>
+      }
+      detail={
+        selectedJid ? (
+          <GroupDetail
+            key={`${deviceId}:${selectedJid}`}
+            deviceId={deviceId}
+            groupJid={selectedJid}
+            group={selectedGroup}
+            onBack={clear}
+            onLeft={clear}
+          />
+        ) : (
+          <EmptyPane
+            icon={Users}
+            title="Pilih grup"
+            hint="Pilih grup dari daftar untuk melihat info, mengelola anggota, dan mengubah pengaturan grup."
+          />
+        )
+      }
+    />
   )
 }
 
 export default function GroupsPage() {
   const deviceId = useSelectedDevice()
-  const [selected, setSelected] = useState<MyGroup | null>(null)
 
-  return (
-    <>
-      <PageHeader
-        title="Groups"
-        description="Groups this device belongs to — select one to manage it."
-        actions={
-          <>
-            <HeaderDialog
-              trigger={
-                <Button variant="outline" size="sm">
-                  <Eye className="size-4" />
-                  Preview link
-                </Button>
-              }
-              title="Group info from link"
-              description="Preview a group before joining."
-            >
-              <InfoFromLinkForm />
-            </HeaderDialog>
-            <HeaderDialog
-              trigger={
-                <Button variant="outline" size="sm">
-                  <Link className="size-4" />
-                  Join with link
-                </Button>
-              }
-              title="Join with link"
-              description="Join a group from its invite link."
-            >
-              <JoinWithLinkForm />
-            </HeaderDialog>
-            <HeaderDialog
-              trigger={
-                <Button size="sm">
-                  <Plus className="size-4" />
-                  Create group
-                </Button>
-              }
-              title="Create group"
-              description="Start a new group with participants."
-            >
-              <CreateGroupForm />
-            </HeaderDialog>
-          </>
-        }
-      />
-      {!deviceId ? (
+  if (!deviceId) {
+    return (
+      <div className="tab:p-6 mx-auto flex h-full max-w-5xl flex-col gap-4 overflow-y-auto p-4">
+        <PageHeader title="Grup" description="Grup yang diikuti perangkat ini." />
         <DeviceGuard />
-      ) : (
-        <>
-          <GroupDirectory onSelect={setSelected} />
-          <GroupDetailSheet group={selected} onOpenChange={(open) => !open && setSelected(null)} />
-        </>
-      )}
-    </>
-  )
+      </div>
+    )
+  }
+
+  // Keyed by device so search text and selection never carry across devices.
+  return <GroupsWorkspace key={deviceId} deviceId={deviceId} />
 }

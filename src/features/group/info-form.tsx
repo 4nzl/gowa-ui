@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import {
   ChevronRight,
   DoorOpen,
@@ -7,60 +8,25 @@ import {
   UserPlus,
   type LucideIcon,
 } from 'lucide-react'
-import { getGroupInfo, type GroupInfo } from '@/api/group'
-import { IdText } from '@/components/shared/id-text'
+import type { GroupInfo } from '@/api/group'
+import { PaneSection } from '@/components/layout/list-detail'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  addressingLabel,
+  formatTimer,
+  groupParticipantCount,
+  memberAddLabel,
+  shortId,
+} from '@/features/group/group-display'
 import { toApiError } from '@/lib/api-error'
-import { usePrivateQuery } from '@/lib/private-query'
 import { formatDate, formatDay, isZeroTime } from '@/lib/format'
+import { formatPhone } from '@/lib/phone'
 import { cn } from '@/lib/utils'
-
-const DAY_SECONDS = 86_400
-const HOUR_SECONDS = 3_600
-
-/** WhatsApp offers 24h / 7d / 90d, but render whatever the API reports. */
-function formatTimer(seconds: number): string {
-  if (seconds >= DAY_SECONDS) {
-    const days = Math.round(seconds / DAY_SECONDS)
-    return `${days} day${days === 1 ? '' : 's'}`
-  }
-  if (seconds >= HOUR_SECONDS) {
-    const hours = Math.round(seconds / HOUR_SECONDS)
-    return `${hours} hour${hours === 1 ? '' : 's'}`
-  }
-  return `${seconds}s`
-}
-
-function memberAddLabel(mode: string | undefined): string {
-  if (mode === 'admin_add') return 'Admins only'
-  if (mode === 'all_member_add') return 'All participants'
-  return mode || 'Unknown'
-}
-
-function addressingLabel(mode: string | undefined): string {
-  if (mode === 'lid') return 'LID'
-  if (mode === 'pn') return 'Phone number'
-  return mode || 'Default'
-}
-
-/** Strip the @server suffix so the owner reads as a plain phone number. */
-function shortId(jid: string): string {
-  return jid.split('@')[0]
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-medium">{title}</h3>
-      {children}
-    </div>
-  )
-}
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-muted/40 flex flex-col gap-1 rounded-lg border p-3">
+    <div className="bg-card flex flex-col gap-1 rounded-xl border p-4">
       <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
         {label}
       </span>
@@ -81,7 +47,7 @@ function SettingRow({
   restricted: boolean
 }) {
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="flex items-center gap-3 py-2.5">
       <Icon className="text-muted-foreground size-4 shrink-0" />
       <span className="flex-1 text-sm">{label}</span>
       <span className={cn('text-sm', restricted ? 'font-medium' : 'text-muted-foreground')}>
@@ -91,11 +57,11 @@ function SettingRow({
   )
 }
 
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-2">
-      <span className="text-muted-foreground shrink-0 text-sm">{label}</span>
-      <span className="min-w-0 text-right text-sm">{children}</span>
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-b py-2.5 last:border-b-0">
+      <dt className="text-muted-foreground text-sm">{label}</dt>
+      <dd className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">{children}</dd>
     </div>
   )
 }
@@ -103,65 +69,75 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 /** Rare states worth calling out; the everyday settings get their own rows. */
 function flagBadges(info: GroupInfo) {
   const flags: { label: string; variant: 'destructive' | 'secondary' | 'outline' }[] = []
-  if (info.Suspended) flags.push({ label: 'Suspended', variant: 'destructive' })
-  if (info.IsParent) flags.push({ label: 'Community parent', variant: 'secondary' })
-  if (info.IsDefaultSubGroup) flags.push({ label: 'Community sub-group', variant: 'secondary' })
-  if (info.LinkedParentJID) flags.push({ label: 'Linked to a community', variant: 'outline' })
+  if (info.Suspended) flags.push({ label: 'Ditangguhkan', variant: 'destructive' })
+  if (info.IsParent) flags.push({ label: 'Induk komunitas', variant: 'secondary' })
+  if (info.IsDefaultSubGroup) flags.push({ label: 'Subgrup komunitas', variant: 'secondary' })
+  if (info.LinkedParentJID) flags.push({ label: 'Tertaut ke komunitas', variant: 'outline' })
   if (info.IsIncognito) flags.push({ label: 'Incognito', variant: 'outline' })
   return flags
 }
 
-export function GroupOverview({ groupJid }: { groupJid: string }) {
-  const { data, isLoading, error } = usePrivateQuery({
-    queryKey: ['group-info', groupJid],
-    queryFn: () => getGroupInfo({ group_id: groupJid }),
-    enabled: !!groupJid,
-  })
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-4">
-        <Skeleton className="h-16" />
-        <div className="grid grid-cols-2 gap-3">
-          <Skeleton className="h-16" />
-          <Skeleton className="h-16" />
-        </div>
-        <Skeleton className="h-36" />
+export function GroupOverviewSkeleton() {
+  return (
+    <div className="flex flex-col gap-3" role="status" aria-label="Memuat info grup">
+      <Skeleton className="h-24 rounded-xl" />
+      <div className="grid grid-cols-2 gap-3">
+        <Skeleton className="h-20 rounded-xl" />
+        <Skeleton className="h-20 rounded-xl" />
       </div>
+      <Skeleton className="h-48 rounded-xl" />
+    </div>
+  )
+}
+
+/** Read-only summary of `/group/info`; the query lives in GroupDetail. */
+export function GroupOverview({
+  info,
+  isLoading,
+  error,
+}: {
+  info: GroupInfo | undefined
+  isLoading: boolean
+  error: Error | null
+}) {
+  if (isLoading) return <GroupOverviewSkeleton />
+  if (error) {
+    return (
+      <PaneSection title="Info grup" tone="danger">
+        <p className="text-destructive text-sm">
+          Gagal memuat info grup: {toApiError(error).message}
+        </p>
+      </PaneSection>
     )
   }
-  if (error) {
-    return <p className="text-destructive text-sm">{toApiError(error).message}</p>
-  }
-  if (!data) return null
+  if (!info) return null
 
-  const participants = data.Participants ?? []
-  const participantCount = participants.length || (data.ParticipantCount ?? 0)
+  const participants = info.Participants ?? []
   const adminCount = participants.filter((participant) => participant.IsAdmin).length
-  const owner = data.OwnerPN || data.OwnerJID
-  const timer = data.IsEphemeral && data.DisappearingTimer ? data.DisappearingTimer : 0
-  const badges = flagBadges(data)
+  const owner = info.OwnerPN || info.OwnerJID
+  const timer = info.IsEphemeral && info.DisappearingTimer ? info.DisappearingTimer : 0
+  const badges = flagBadges(info)
 
   return (
-    <div className="flex flex-col gap-6">
-      <Section title="Topic">
-        {data.Topic ? (
-          <div className="bg-muted/40 rounded-lg border p-3">
-            <p className="text-sm whitespace-pre-wrap">{data.Topic}</p>
-            {data.TopicSetAt && !isZeroTime(data.TopicSetAt) && (
+    <>
+      <PaneSection title="Deskripsi">
+        {info.Topic ? (
+          <>
+            <p className="text-sm whitespace-pre-wrap">{info.Topic}</p>
+            {info.TopicSetAt && !isZeroTime(info.TopicSetAt) && (
               <p className="text-muted-foreground mt-2 text-xs">
-                Updated {formatDay(data.TopicSetAt)}
+                Diperbarui {formatDay(info.TopicSetAt)}
               </p>
             )}
-          </div>
+          </>
         ) : (
-          <p className="text-muted-foreground text-sm">No topic set.</p>
+          <p className="text-muted-foreground text-sm">Belum ada deskripsi.</p>
         )}
-      </Section>
+      </PaneSection>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatTile label="Participants" value={String(participantCount)} />
-        {participants.length > 0 && <StatTile label="Admins" value={String(adminCount)} />}
+        <StatTile label="Anggota" value={String(groupParticipantCount(info))} />
+        {participants.length > 0 && <StatTile label="Admin" value={String(adminCount)} />}
       </div>
 
       {badges.length > 0 && (
@@ -174,68 +150,70 @@ export function GroupOverview({ groupJid }: { groupJid: string }) {
         </div>
       )}
 
-      <Section title="Who can do what">
+      <PaneSection title="Siapa yang boleh">
         <div className="flex flex-col divide-y">
           <SettingRow
             icon={MessageSquare}
-            label="Send messages"
-            value={data.IsAnnounce ? 'Admins only' : 'All participants'}
-            restricted={!!data.IsAnnounce}
+            label="Kirim pesan"
+            value={info.IsAnnounce ? 'Hanya admin' : 'Semua anggota'}
+            restricted={!!info.IsAnnounce}
           />
           <SettingRow
             icon={Pencil}
-            label="Edit group info"
-            value={data.IsLocked ? 'Admins only' : 'All participants'}
-            restricted={!!data.IsLocked}
+            label="Ubah info grup"
+            value={info.IsLocked ? 'Hanya admin' : 'Semua anggota'}
+            restricted={!!info.IsLocked}
           />
           <SettingRow
             icon={UserPlus}
-            label="Add participants"
-            value={memberAddLabel(data.MemberAddMode)}
-            restricted={data.MemberAddMode === 'admin_add'}
+            label="Tambah anggota"
+            value={memberAddLabel(info.MemberAddMode)}
+            restricted={info.MemberAddMode === 'admin_add'}
           />
           <SettingRow
             icon={DoorOpen}
-            label="Join via invite link"
-            value={data.IsJoinApprovalRequired ? 'Needs approval' : 'Open'}
-            restricted={!!data.IsJoinApprovalRequired}
+            label="Gabung lewat tautan undangan"
+            value={info.IsJoinApprovalRequired ? 'Perlu persetujuan' : 'Langsung'}
+            restricted={!!info.IsJoinApprovalRequired}
           />
           <SettingRow
             icon={Timer}
-            label="Disappearing messages"
-            value={timer ? formatTimer(timer) : 'Off'}
+            label="Pesan sementara"
+            value={timer ? formatTimer(timer) : 'Nonaktif'}
             restricted={!!timer}
           />
         </div>
-      </Section>
+      </PaneSection>
 
-      <Section title="Details">
-        <div className="flex flex-col divide-y">
-          <DetailRow label="Owner">
-            <IdText value={owner ? shortId(owner) : '—'} />
-          </DetailRow>
-          <DetailRow label="Created">
-            {isZeroTime(data.GroupCreated) ? '—' : formatDate(data.GroupCreated)}
-          </DetailRow>
-          {data.NameSetAt && !isZeroTime(data.NameSetAt) && (
-            <DetailRow label="Name set">{formatDay(data.NameSetAt)}</DetailRow>
+      <PaneSection title="Informasi">
+        <dl>
+          <InfoRow label="JID">
+            <span className="font-mono text-xs">{info.JID}</span>
+          </InfoRow>
+          <InfoRow label="Pemilik grup">
+            {owner ? (formatPhone(owner) ?? shortId(owner)) : '—'}
+          </InfoRow>
+          <InfoRow label="Dibuat">
+            {isZeroTime(info.GroupCreated) ? '—' : formatDate(info.GroupCreated)}
+          </InfoRow>
+          {info.NameSetAt && !isZeroTime(info.NameSetAt) && (
+            <InfoRow label="Nama diubah">{formatDay(info.NameSetAt)}</InfoRow>
           )}
-          <DetailRow label="Addressing mode">{addressingLabel(data.AddressingMode)}</DetailRow>
-          {data.CreatorCountryCode && (
-            <DetailRow label="Creator region">{data.CreatorCountryCode}</DetailRow>
+          <InfoRow label="Mode alamat">{addressingLabel(info.AddressingMode)}</InfoRow>
+          {info.CreatorCountryCode && (
+            <InfoRow label="Wilayah pembuat">{info.CreatorCountryCode}</InfoRow>
           )}
-        </div>
-      </Section>
-
-      <details className="group/raw rounded-lg border">
-        <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-1.5 p-3 text-xs font-medium select-none">
-          <ChevronRight className="size-3.5 transition-transform group-open/raw:rotate-90" />
-          Raw response
-        </summary>
-        <pre className="text-muted-foreground overflow-x-auto border-t p-3 font-mono text-xs">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </details>
-    </div>
+        </dl>
+        <details className="group/raw mt-3 rounded-lg border">
+          <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-1.5 p-3 text-xs font-medium select-none">
+            <ChevronRight className="size-3.5 transition-transform group-open/raw:rotate-90" />
+            Respons mentah
+          </summary>
+          <pre className="text-muted-foreground overflow-x-auto border-t p-3 font-mono text-xs">
+            {JSON.stringify(info, null, 2)}
+          </pre>
+        </details>
+      </PaneSection>
+    </>
   )
 }

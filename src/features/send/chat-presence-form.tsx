@@ -17,7 +17,7 @@ export function SendChatPresenceForm() {
   const jid = useRecipientJid()
   const [action, setAction] = useState('start')
 
-  const mutation = useActionMutation(sendChatPresence, { successMessage: 'Chat presence sent' })
+  const mutation = useActionMutation(sendChatPresence, { successMessage: 'Chat presence terkirim' })
 
   const payload = {
     phone: jid,
@@ -32,19 +32,19 @@ export function SendChatPresenceForm() {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <div className="flex flex-col gap-2">
-        <Label>Action</Label>
+        <Label htmlFor="chat-presence-action">Aksi</Label>
         <Select value={action} onValueChange={setAction}>
-          <SelectTrigger>
+          <SelectTrigger id="chat-presence-action">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="start">Start typing</SelectItem>
-            <SelectItem value="stop">Stop typing</SelectItem>
+            <SelectItem value="start">Mulai mengetik</SelectItem>
+            <SelectItem value="stop">Berhenti mengetik</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <FormActions
-        submitLabel="Send chat presence"
+        submitLabel="Kirim chat presence"
         pending={mutation.isPending}
         disabled={!jid}
         request={chatPresenceRequest(payload)}
