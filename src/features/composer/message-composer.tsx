@@ -21,6 +21,7 @@ import {
   type ScheduleFields as ScheduleDraft,
   type SendResult,
 } from '@/api/send'
+import type { MessageInfo } from '@/api/chat'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
@@ -32,6 +33,8 @@ import {
 } from '@/features/composer/attachment'
 import { EmojiPicker } from '@/features/composer/emoji-picker'
 import { insertAtCursor } from '@/features/composer/emoji-data'
+import { messageSummary } from '@/features/chat/chat-format'
+import { senderDisplayName } from '@/features/chat/display-name'
 import { draftKey, useDraftStore } from '@/features/chat/drafts'
 import { ScheduleFields } from '@/features/send/schedule-fields'
 import { useScheduleDraft } from '@/features/send/use-schedule-draft'
@@ -76,10 +79,15 @@ export function MessageComposer({
   chatJid,
   deviceId,
   onSent,
+  replyTo = null,
+  onCancelReply,
 }: {
   chatJid: string
   deviceId: string
   onSent: () => void
+  /** Message the next send answers (sent as reply_message_id). */
+  replyTo?: MessageInfo | null
+  onCancelReply?: () => void
 }) {
   const key = draftKey(deviceId, chatJid)
   const text = useDraftStore((state) => state.drafts[key] ?? '')
@@ -102,6 +110,10 @@ export function MessageComposer({
     [attachment],
   )
 
+  useEffect(() => {
+    if (replyTo) textarea.current?.focus()
+  }, [replyTo])
+
   useLayoutEffect(() => {
     const element = textarea.current
     if (!element) return
@@ -110,11 +122,17 @@ export function MessageComposer({
   }, [text])
 
   const schedule: ScheduleDraft = scheduling ? scheduleDraft : {}
+  const replyId = replyTo?.id
 
   const send = useMutation<SendResult, unknown, void>({
     mutationFn: () => {
       if (attachment) {
-        const base = { phone: chatJid, file: attachment.file, ...schedule }
+        const base = {
+          phone: chatJid,
+          file: attachment.file,
+          reply_message_id: replyId,
+          ...schedule,
+        }
         const withCaption = { ...base, caption: caption.trim() || undefined }
         switch (attachment.kind) {
           case 'image':
@@ -127,7 +145,10 @@ export function MessageComposer({
             return sendFile(withCaption, deviceId)
         }
       }
-      return sendText({ phone: chatJid, message: text.trim(), ...schedule }, deviceId)
+      return sendText(
+        { phone: chatJid, message: text.trim(), reply_message_id: replyId, ...schedule },
+        deviceId,
+      )
     },
     onSuccess: (result) => {
       toast.success(result.schedule_id ? 'Pesan dijadwalkan' : 'Terkirim')
@@ -141,6 +162,7 @@ export function MessageComposer({
         setScheduling(false)
         resetSchedule()
       }
+      onCancelReply?.()
       onSent()
     },
     onError: (error) => toast.error(`Gagal mengirim: ${toApiError(error).message}`),
@@ -226,6 +248,26 @@ export function MessageComposer({
               Pilih tanggal dan jam kirim terlebih dahulu.
             </p>
           )}
+        </div>
+      )}
+
+      {replyTo && (
+        <div className="tab:px-4 flex items-center gap-2 border-b px-3 py-2">
+          <div className="border-primary bg-muted min-w-0 flex-1 rounded-md border-l-4 px-3 py-1.5">
+            <p className="text-primary text-xs font-medium">
+              Membalas {replyTo.is_from_me ? 'diri sendiri' : senderDisplayName(replyTo)}
+            </p>
+            <p className="text-muted-foreground truncate text-sm">{messageSummary(replyTo)}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0 rounded-full"
+            aria-label="Batalkan balasan"
+            onClick={onCancelReply}
+          >
+            <X className="size-4" />
+          </Button>
         </div>
       )}
 

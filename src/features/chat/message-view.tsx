@@ -22,6 +22,7 @@ import { chatMessagesQueryKey } from '@/features/chat/device-scope'
 import { senderDisplayName } from '@/features/chat/display-name'
 import { FormattedText } from '@/features/chat/formatted-text'
 import { MessageMedia } from '@/features/chat/message-media'
+import { MessageMenu } from '@/features/chat/message-menu'
 import { MessageComposer } from '@/features/composer/message-composer'
 import { toApiError } from '@/lib/api-error'
 import { connectionPlaceholder, trackedQueryFn } from '@/lib/private-query'
@@ -75,6 +76,7 @@ function MessageBubble({
   deviceId,
   showSender,
   continued,
+  onReply,
 }: {
   message: MessageInfo
   /** The replied-to message; null when it is not loaded, undefined when not a reply. */
@@ -82,6 +84,7 @@ function MessageBubble({
   deviceId: string
   showSender: boolean
   continued: boolean
+  onReply: (message: MessageInfo) => void
 }) {
   const mine = message.is_from_me
   const hasMedia = Boolean(message.media_type) && message.media_type !== 'call'
@@ -108,11 +111,17 @@ function MessageBubble({
     >
       <div
         className={cn(
-          'tab:max-w-[min(72%,600px)] relative max-w-[min(88%,560px)] min-w-[88px] rounded-lg px-2 pt-1.5 pb-1 text-[14.5px] leading-[1.35] [overflow-wrap:anywhere] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]',
+          'tab:max-w-[min(72%,600px)] group/bubble relative max-w-[min(88%,560px)] min-w-[88px] rounded-lg px-2 pt-1.5 pb-1 text-[14.5px] leading-[1.35] [overflow-wrap:anywhere] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]',
           mine ? 'bg-bubble-out' : 'bg-bubble-in',
           !continued && (mine ? 'rounded-tr-none' : 'rounded-tl-none'),
         )}
       >
+        <MessageMenu
+          message={message}
+          chatJid={message.chat_jid}
+          deviceId={deviceId}
+          onReply={onReply}
+        />
         {showSender && (
           <p
             className={cn(
@@ -192,6 +201,7 @@ export function MessageView({
   const [historyPollUntil, setHistoryPollUntil] = useState(0)
   const [historyPending, setHistoryPending] = useState(false)
   const [unseen, setUnseen] = useState(0)
+  const [replyTo, setReplyTo] = useState<MessageInfo | null>(null)
   const stickToBottom = useRef(true)
   const filtering = search !== '' || mediaOnly
 
@@ -517,6 +527,7 @@ export function MessageView({
                       deviceId={deviceId}
                       showSender={group && !message.is_from_me && !continued}
                       continued={continued}
+                      onReply={setReplyTo}
                     />
                   </div>
                 )
@@ -537,7 +548,13 @@ export function MessageView({
         )}
       </div>
 
-      <MessageComposer chatJid={chat.jid} deviceId={deviceId} onSent={onSent} />
+      <MessageComposer
+        chatJid={chat.jid}
+        deviceId={deviceId}
+        onSent={onSent}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
+      />
     </div>
   )
 }
