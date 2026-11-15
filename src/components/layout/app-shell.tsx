@@ -12,7 +12,7 @@ import { useConnection } from '@/stores/connection'
 import { useShellStore } from '@/stores/shell'
 
 /** Pages that manage their own full-height list/detail layout instead of a padded column. */
-const FULL_BLEED_PATHS = new Set(['/', '/chats'])
+const FULL_BLEED_PATHS = new Set(['/', '/chats', '/groups', '/channels', '/account', '/messaging'])
 
 export function AppShell() {
   const status = useConnection((state) => state.status)
