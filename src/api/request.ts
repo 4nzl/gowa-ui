@@ -50,8 +50,13 @@ function toFormData(form: NonNullable<ApiRequest['form']>): FormData {
 }
 
 /** Explicit device scope for a request; omitted, the interceptor uses the selected device. */
-export function deviceHeaders(deviceId?: string): { headers?: Record<string, string> } {
-  return deviceId ? { headers: { 'X-Device-Id': encodeURIComponent(deviceId) } } : {}
+export function deviceHeaders(deviceId?: unknown): { headers?: Record<string, string> } {
+  // Only a real string counts. API helpers are often handed straight to
+  // useMutation, and TanStack Query v5 calls mutationFn(variables, context): the
+  // context object must not end up as "X-Device-Id: [object Object]".
+  return typeof deviceId === 'string' && deviceId
+    ? { headers: { 'X-Device-Id': encodeURIComponent(deviceId) } }
+    : {}
 }
 
 /**
