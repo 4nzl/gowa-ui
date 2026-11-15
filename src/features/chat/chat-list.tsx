@@ -77,7 +77,7 @@ export function ChatList({
         </label>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 rounded-md border">
+      <ScrollArea className="min-h-0 flex-1 rounded-md border [&_[data-slot=scroll-area-viewport]>div]:!block">
         {query.isLoading ? (
           <div className="flex justify-center p-6">
             <Loader2 className="text-muted-foreground size-5 animate-spin" />

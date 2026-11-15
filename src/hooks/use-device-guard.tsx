@@ -7,8 +7,8 @@ export function DeviceGuard() {
   return (
     <EmptyState
       icon={Smartphone}
-      title="No device selected"
-      hint="Select a device from the top bar to use device-scoped actions."
+      title="Belum ada perangkat dipilih"
+      hint="Pilih perangkat aktif di bilah atas atau di menu Perangkat. Perangkat tidak dipilih otomatis agar pesan tidak terkirim lewat perangkat yang salah."
     />
   )
 }

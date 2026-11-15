@@ -9,9 +9,9 @@ const dotStyles: Record<WsStatus, string> = {
 }
 
 const labels: Record<WsStatus, string> = {
-  connected: 'Live updates connected',
-  connecting: 'Live updates reconnecting…',
-  disconnected: 'Live updates offline',
+  connected: 'Pembaruan langsung tersambung',
+  connecting: 'Pembaruan langsung menyambung ulang…',
+  disconnected: 'Pembaruan langsung terputus',
 }
 
 export function WsBadge() {
@@ -19,7 +19,11 @@ export function WsBadge() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="flex items-center px-1" aria-label={labels[status]}>
+        <span
+          role="status"
+          className="grid size-8 shrink-0 place-items-center"
+          aria-label={labels[status]}
+        >
           <span className={cn('size-2.5 rounded-full', dotStyles[status])} />
         </span>
       </TooltipTrigger>

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { History, Loader2, Send } from 'lucide-react'
+import { ArrowLeft, History, Loader2, Send } from 'lucide-react'
 import { getChatMessages, requestChatHistory, type ChatInfo, type MessageInfo } from '@/api/chat'
 import { sendText } from '@/api/send'
 import { FormattedText } from '@/features/chat/formatted-text'
@@ -60,7 +60,7 @@ function MessageBubble({
     <div className={cn('flex', message.is_from_me ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow-xs',
+          'max-w-[75%] min-w-0 rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] shadow-xs',
           message.is_from_me ? 'bg-bubble-out rounded-br-sm' : 'bg-bubble-in rounded-bl-sm border',
         )}
       >
@@ -98,7 +98,16 @@ function MessageBubble({
   )
 }
 
-export function MessageView({ chat, deviceId }: { chat: ChatInfo; deviceId: string }) {
+export function MessageView({
+  chat,
+  deviceId,
+  onBack,
+}: {
+  chat: ChatInfo
+  deviceId: string
+  /** Shows a back button on mobile, where the open chat replaces the chat list. */
+  onBack?: () => void
+}) {
   const queryClient = useQueryClient()
   const connectionId = useConnection((state) => state.connectionId)
   const messageList = useRef<HTMLDivElement>(null)
@@ -181,7 +190,18 @@ export function MessageView({ chat, deviceId }: { chat: ChatInfo; deviceId: stri
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex items-start justify-between gap-2 border-b pb-3">
-        <div className="min-w-0">
+        {onBack && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="tab:hidden -ml-1 size-10 shrink-0 rounded-full"
+            aria-label="Kembali ke daftar chat"
+            onClick={onBack}
+          >
+            <ArrowLeft className="size-5" />
+          </Button>
+        )}
+        <div className="min-w-0 flex-1">
           <h2 className="truncate font-medium">{chatDisplayName(resolvedChat)}</h2>
           <p className="text-muted-foreground truncate font-mono text-xs">{resolvedChat.jid}</p>
         </div>
@@ -211,7 +231,7 @@ export function MessageView({ chat, deviceId }: { chat: ChatInfo; deviceId: stri
       </div>
 
       <div ref={messageList} className="min-h-0 flex-1">
-        <ScrollArea className="bg-muted/40 size-full rounded-lg border p-3">
+        <ScrollArea className="bg-muted/40 size-full rounded-lg border p-3 [&_[data-slot=scroll-area-viewport]>div]:!block">
           {query.isLoading ? (
             <div className="flex justify-center p-6">
               <Loader2 className="text-muted-foreground size-5 animate-spin" />
@@ -256,9 +276,9 @@ export function MessageView({ chat, deviceId }: { chat: ChatInfo; deviceId: stri
         </ScrollArea>
       </div>
 
-      <div className="text-muted-foreground flex items-center justify-between text-xs">
+      <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-1 text-xs">
         <span>{total} messages</span>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap justify-end gap-1">
           {total > 0 && offset + PAGE_SIZE >= total && (
             <Button
               variant="ghost"

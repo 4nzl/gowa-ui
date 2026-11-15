@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Smartphone } from 'lucide-react'
 import {
   Select,
@@ -24,19 +23,17 @@ export function DeviceSwitcher() {
   const selectedDeviceId = useDeviceStore((state) => state.selectedDeviceId)
   const selectDevice = useDeviceStore((state) => state.selectDevice)
 
-  useEffect(() => {
-    if (!devices) return
-    const exists = devices.some((device) => device.id === selectedDeviceId)
-    if (!exists) selectDevice(devices[0]?.id ?? null)
-  }, [devices, selectedDeviceId, selectDevice])
-
   if (!devices?.length) return null
 
   return (
-    <Select value={selectedDeviceId ?? undefined} onValueChange={selectDevice}>
-      <SelectTrigger size="sm" className="w-36 sm:w-44 md:w-56">
+    <Select value={selectedDeviceId ?? ''} onValueChange={selectDevice}>
+      <SelectTrigger
+        size="sm"
+        className="w-44 max-w-full min-w-0 sm:w-48 md:w-56"
+        aria-label="Perangkat aktif"
+      >
         <Smartphone className="text-muted-foreground size-4 shrink-0" />
-        <SelectValue placeholder="Select device" />
+        <SelectValue placeholder="Pilih perangkat" />
       </SelectTrigger>
       <SelectContent>
         {devices.map((device) => (

@@ -1,14 +1,19 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-@import '@fontsource-variable/bricolage-grotesque';
 @import '@fontsource-variable/figtree';
 @import '@fontsource-variable/jetbrains-mono';
 
 @custom-variant dark (&:is(.dark *));
 
+/* Master Plan v5 §15 layout modes: mobile ≤690px, tablet 691–1024px, desktop ≥1025px. */
+@theme {
+  --breakpoint-tab: 43.1875rem;
+  --breakpoint-desk: 64.0625rem;
+}
+
 @theme inline {
-  --font-heading: 'Bricolage Grotesque Variable', var(--font-sans);
+  --font-heading: var(--font-sans);
   --font-sans: 'Figtree Variable', sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -45,6 +50,7 @@
   --color-live: var(--live);
   --color-bubble-in: var(--bubble-in);
   --color-bubble-out: var(--bubble-out);
+  --color-thread: var(--thread);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -54,81 +60,86 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * GOWA RAMAFOR palette (Master Plan v5 §5): neutral WhatsApp-Business-style surfaces with the
+ * #008069 / #25D366 greens. Light: #F7F5F3 navigation/panels, white cards, #D9FDD3 outgoing
+ * bubbles. Dark: #0B141A canvas, #111B21 / #202C33 panels, #005C4B outgoing bubbles.
+ */
 :root {
-  /* Brand-blue light: cool paper, white cards, steel-blue primary (logo #7caec2 ≈ oklch(0.72 0.06 225)) */
-  --background: oklch(0.965 0.006 225);
-  --foreground: oklch(0.24 0.02 235);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.02 235);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.02 235);
-  --primary: oklch(0.55 0.09 225);
-  --primary-foreground: oklch(0.985 0.005 225);
-  --secondary: oklch(0.94 0.015 225);
-  --secondary-foreground: oklch(0.35 0.04 225);
-  --muted: oklch(0.945 0.008 225);
-  --muted-foreground: oklch(0.5 0.02 220);
-  --accent: oklch(0.93 0.03 225);
-  --accent-foreground: oklch(0.32 0.06 225);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0.012 225);
-  --input: oklch(0.9 0.012 225);
-  --ring: oklch(0.66 0.09 225);
-  --chart-1: oklch(0.55 0.09 225);
-  --chart-2: oklch(0.66 0.09 225);
-  --chart-3: oklch(0.72 0.06 225);
-  --chart-4: oklch(0.5 0.02 220);
-  --chart-5: oklch(0.35 0.04 225);
+  --background: #f7f5f3;
+  --foreground: #151717;
+  --card: #ffffff;
+  --card-foreground: #151717;
+  --popover: #ffffff;
+  --popover-foreground: #151717;
+  --primary: #008069;
+  --primary-foreground: #ffffff;
+  --secondary: #efefed;
+  --secondary-foreground: #151717;
+  --muted: #efefed;
+  --muted-foreground: #5f6568;
+  --accent: #f0f1ef;
+  --accent-foreground: #151717;
+  --destructive: #c4372b;
+  --border: #e8e8e6;
+  --input: #dadbd9;
+  --ring: #008069;
+  --chart-1: #008069;
+  --chart-2: #25d366;
+  --chart-3: #53bdeb;
+  --chart-4: #5f6568;
+  --chart-5: #005c4b;
   --radius: 0.875rem;
-  --live: oklch(0.72 0.17 152);
-  --bubble-in: oklch(1 0 0);
-  --bubble-out: oklch(0.93 0.045 225);
-  --sidebar: oklch(0.985 0.004 225);
-  --sidebar-foreground: oklch(0.24 0.02 235);
-  --sidebar-primary: oklch(0.55 0.09 225);
-  --sidebar-primary-foreground: oklch(0.985 0.005 225);
-  --sidebar-accent: oklch(0.92 0.03 225);
-  --sidebar-accent-foreground: oklch(0.32 0.06 225);
-  --sidebar-border: oklch(0.9 0.012 225);
-  --sidebar-ring: oklch(0.66 0.09 225);
+  --live: #25d366;
+  --bubble-in: #ffffff;
+  --bubble-out: #d9fdd3;
+  --thread: #efeae1;
+  --sidebar: #f7f5f3;
+  --sidebar-foreground: #151717;
+  --sidebar-primary: #008069;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8e8e6;
+  --sidebar-accent-foreground: #151717;
+  --sidebar-border: #e8e8e6;
+  --sidebar-ring: #008069;
 }
 
 .dark {
-  /* Brand-blue dark: blue-tinted deep charcoal, primary near logo #7caec2 */
-  --background: oklch(0.18 0.016 235);
-  --foreground: oklch(0.93 0.008 225);
-  --card: oklch(0.22 0.016 235);
-  --card-foreground: oklch(0.93 0.008 225);
-  --popover: oklch(0.24 0.018 235);
-  --popover-foreground: oklch(0.93 0.008 225);
-  --primary: oklch(0.72 0.075 225);
-  --primary-foreground: oklch(0.16 0.02 235);
-  --secondary: oklch(0.29 0.02 235);
-  --secondary-foreground: oklch(0.9 0.01 225);
-  --muted: oklch(0.28 0.018 235);
-  --muted-foreground: oklch(0.62 0.015 225);
-  --accent: oklch(0.31 0.03 225);
-  --accent-foreground: oklch(0.9 0.02 225);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.66 0.09 225);
-  --chart-1: oklch(0.72 0.075 225);
-  --chart-2: oklch(0.78 0.06 225);
-  --chart-3: oklch(0.55 0.09 225);
-  --chart-4: oklch(0.62 0.015 225);
-  --chart-5: oklch(0.9 0.01 225);
-  --live: oklch(0.78 0.19 152);
-  --bubble-in: oklch(0.29 0.02 235);
-  --bubble-out: oklch(0.42 0.07 225);
-  --sidebar: oklch(0.2 0.016 235);
-  --sidebar-foreground: oklch(0.93 0.008 225);
-  --sidebar-primary: oklch(0.72 0.075 225);
-  --sidebar-primary-foreground: oklch(0.16 0.02 235);
-  --sidebar-accent: oklch(0.3 0.035 225);
-  --sidebar-accent-foreground: oklch(0.9 0.02 225);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.66 0.09 225);
+  --background: #0b141a;
+  --foreground: #e9edef;
+  --card: #111b21;
+  --card-foreground: #e9edef;
+  --popover: #202c33;
+  --popover-foreground: #e9edef;
+  --primary: #00a884;
+  --primary-foreground: #0b141a;
+  --secondary: #202c33;
+  --secondary-foreground: #e9edef;
+  --muted: #202c33;
+  --muted-foreground: #9eacb4;
+  --accent: #2a3942;
+  --accent-foreground: #e9edef;
+  --destructive: #f15c6d;
+  --border: #26343c;
+  --input: #3b4a54;
+  --ring: #00a884;
+  --chart-1: #00a884;
+  --chart-2: #25d366;
+  --chart-3: #53bdeb;
+  --chart-4: #9eacb4;
+  --chart-5: #d9fdd3;
+  --live: #25d366;
+  --bubble-in: #202c33;
+  --bubble-out: #005c4b;
+  --thread: #0b141a;
+  --sidebar: #202c33;
+  --sidebar-foreground: #e9edef;
+  --sidebar-primary: #00a884;
+  --sidebar-primary-foreground: #0b141a;
+  --sidebar-accent: #2a3942;
+  --sidebar-accent-foreground: #e9edef;
+  --sidebar-border: #26343c;
+  --sidebar-ring: #00a884;
 }
 
 @layer base {

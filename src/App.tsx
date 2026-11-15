@@ -8,14 +8,16 @@ import { wsClient } from '@/lib/ws'
 import { useConnection } from '@/stores/connection'
 import { useDeviceStore } from '@/stores/device'
 import AccountPage from '@/pages/account'
+import CallsPage from '@/pages/calls'
+import ChannelsPage from '@/pages/channels'
 import ChatsPage from '@/pages/chats'
 import ConnectPage from '@/pages/connect'
 import DashboardPage from '@/pages/dashboard'
 import GroupsPage from '@/pages/groups'
 import MessagingPage from '@/pages/messaging'
-import MiscPage from '@/pages/misc'
 import SettingsPage from '@/pages/settings'
 import ScheduledPage from '@/pages/scheduled'
+import StatusPage from '@/pages/status'
 
 function useBootstrap() {
   const queryClient = useQueryClient()
@@ -75,15 +77,18 @@ function App() {
       <Route path="/connect" element={<ConnectPage />} />
       <Route element={<AppShell />}>
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/chats" element={<ChatsPage />} />
+        <Route path="/calls" element={<CallsPage />} />
+        <Route path="/status" element={<StatusPage />} />
+        <Route path="/channels" element={<ChannelsPage />} />
+        <Route path="/groups" element={<GroupsPage />} />
         <Route path="/messaging" element={<MessagingPage />} />
         <Route path="/scheduled" element={<ScheduledPage />} />
+        <Route path="/account" element={<AccountPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/send" element={<Navigate to="/messaging" replace />} />
         <Route path="/messages" element={<Navigate to="/messaging" replace />} />
-        <Route path="/groups" element={<GroupsPage />} />
-        <Route path="/chats" element={<ChatsPage />} />
-        <Route path="/account" element={<AccountPage />} />
-        <Route path="/misc" element={<MiscPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/misc" element={<Navigate to="/channels" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

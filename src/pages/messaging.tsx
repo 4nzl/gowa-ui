@@ -1,6 +1,7 @@
 import { useState, type ComponentType, type ReactNode } from 'react'
 import {
   BarChart3,
+  CalendarClock,
   FileUp,
   Image,
   Keyboard,
@@ -17,7 +18,10 @@ import {
   UserRoundSearch,
   Video,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/page-header'
+import { Button } from '@/components/ui/button'
+import { useAppInfo } from '@/hooks/use-app-info'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -251,12 +255,23 @@ function ActPanel() {
 
 export default function MessagingPage() {
   const device = useSelectedDevice()
+  const { data: info } = useAppInfo()
 
   return (
     <>
       <PageHeader
         title="Messaging"
         description="Pick a recipient once, then compose messages or act on existing ones."
+        actions={
+          info?.scheduled_sends ? (
+            <Button asChild variant="outline">
+              <Link to="/scheduled">
+                <CalendarClock className="size-4" />
+                Pesan terjadwal
+              </Link>
+            </Button>
+          ) : null
+        }
       />
       {device === null ? (
         <DeviceGuard />

@@ -1,102 +1,28 @@
-import { useState } from 'react'
-import {
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  MessagesSquare,
-  Send,
-  Settings,
-  UserRound,
-  Users,
-  Wrench,
-  CalendarClock,
-} from 'lucide-react'
-import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { DeviceSwitcher } from '@/components/layout/device-switcher'
-import { Logo } from '@/components/layout/logo'
+import { BottomNav, NavigationRail } from '@/components/layout/navigation-rail'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { WsBadge } from '@/components/layout/ws-badge'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { BRAND } from '@/config/brand'
 import { PasskeyDialog } from '@/features/session/passkey-dialog'
-import { useAppInfo } from '@/hooks/use-app-info'
+import { useDeviceSelectionSync } from '@/hooks/use-device-selection'
 import { cn } from '@/lib/utils'
 import { useConnection } from '@/stores/connection'
+import { useShellStore } from '@/stores/shell'
 
-const navGroups = [
-  {
-    label: 'Overview',
-    items: [{ to: '/', label: 'Devices', icon: LayoutDashboard }],
-  },
-  {
-    label: 'Messaging',
-    items: [
-      { to: '/messaging', label: 'Messaging', icon: Send },
-      { to: '/scheduled', label: 'Scheduled', icon: CalendarClock },
-      { to: '/chats', label: 'Chats', icon: MessagesSquare },
-    ],
-  },
-  {
-    label: 'Directory',
-    items: [
-      { to: '/groups', label: 'Groups', icon: Users },
-      { to: '/account', label: 'Account', icon: UserRound },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { to: '/misc', label: 'Channels & Calls', icon: Wrench },
-      { to: '/settings', label: 'Settings', icon: Settings },
-    ],
-  },
-]
-
-function NavContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { data: info } = useAppInfo()
-  return (
-    <nav className="flex flex-col gap-4">
-      {navGroups.map((group) => (
-        <div key={group.label} className="flex flex-col gap-1">
-          <p className="text-muted-foreground px-3 text-[11px] font-medium tracking-wider uppercase">
-            {group.label}
-          </p>
-          {group.items
-            .filter(({ to }) => to !== '/scheduled' || info?.scheduled_sends)
-            .map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
-                onClick={onNavigate}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                      : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-                  )
-                }
-              >
-                <Icon className="size-4" />
-                {label}
-              </NavLink>
-            ))}
-        </div>
-      ))}
-    </nav>
-  )
-}
+/** Pages that manage their own full-height list/detail layout instead of a padded column. */
+const FULL_BLEED_PATHS = new Set(['/chats'])
 
 export function AppShell() {
   const status = useConnection((state) => state.status)
   const location = useLocation()
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const immersive = useShellStore((state) => state.immersive)
+  useDeviceSelectionSync()
 
   if (status === 'booting') {
     return (
-      <div className="flex min-h-svh items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center" role="status" aria-label="Memuat">
         <Loader2 className="text-muted-foreground size-6 animate-spin" />
       </div>
     )
@@ -106,56 +32,52 @@ export function AppShell() {
     return <Navigate to="/connect" replace />
   }
 
+  const fullBleed = FULL_BLEED_PATHS.has(location.pathname)
+
   return (
-    <div className="flex min-h-svh">
-      <aside className="bg-sidebar text-sidebar-foreground hidden w-60 shrink-0 flex-col border-r md:flex">
-        <div className="flex h-14 items-center border-b px-4">
-          <Logo />
-        </div>
-        <ScrollArea className="flex-1 px-2 py-4">
-          <NavContent />
-        </ScrollArea>
-      </aside>
+    <div className="bg-background flex h-dvh overflow-clip">
+      <NavigationRail />
 
-      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="bg-sidebar w-72 p-0">
-          <SheetHeader className="border-b">
-            <SheetTitle asChild>
-              <div>
-                <Logo />
-              </div>
-            </SheetTitle>
-          </SheetHeader>
-          <ScrollArea className="flex-1 px-2 pb-4">
-            <NavContent onNavigate={() => setMobileNavOpen(false)} />
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between gap-2 border-b px-4">
-          <div className="flex items-center gap-2 md:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Open navigation"
-              onClick={() => setMobileNavOpen(true)}
-            >
-              <Menu className="size-5" />
-            </Button>
-            <Logo />
-          </div>
-          <div className="ml-auto flex items-center gap-2">
+      <div className="flex min-w-0 flex-1 flex-col overflow-clip">
+        <header
+          className={cn(
+            'bg-card tab:px-4 flex h-14 shrink-0 items-center gap-2 border-b px-3',
+            immersive && 'max-tab:hidden',
+          )}
+        >
+          <img
+            src={BRAND.logoUrl}
+            alt={BRAND.shortName}
+            className="tab:hidden h-7 w-auto shrink-0"
+          />
+          <div className="ml-auto flex min-w-0 items-center gap-1">
             <DeviceSwitcher />
-            <WsBadge />
-            <ThemeToggle />
+            <div className="tab:hidden flex items-center">
+              <WsBadge />
+              <ThemeToggle />
+            </div>
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6">
-          <div key={location.pathname} className="stagger mx-auto flex max-w-5xl flex-col gap-5">
+
+        <main
+          className={cn(
+            'min-h-0 flex-1',
+            fullBleed ? 'overflow-clip' : 'overflow-x-clip overflow-y-auto overscroll-contain',
+          )}
+        >
+          {fullBleed ? (
             <Outlet />
-          </div>
+          ) : (
+            <div
+              key={location.pathname}
+              className="stagger tab:p-6 mx-auto flex max-w-5xl flex-col gap-5 p-4"
+            >
+              <Outlet />
+            </div>
+          )}
         </main>
+
+        <BottomNav className={cn(immersive && 'max-tab:hidden')} />
       </div>
       <PasskeyDialog />
     </div>

@@ -5,13 +5,15 @@ export function ActionCard({
   title,
   description,
   children,
+  className,
 }: {
   title: string
   description?: string
   children: ReactNode
+  className?: string
 }) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
