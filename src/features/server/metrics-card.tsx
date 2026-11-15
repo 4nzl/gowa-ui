@@ -1,24 +1,26 @@
 import type { ReactNode } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { appMetrics } from '@/api/app'
+import { PaneSection } from '@/components/layout/list-detail'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatCount, formatUptime } from '@/features/server/metrics-format'
 import { toApiError } from '@/lib/api-error'
-import { formatBytes, formatDuration } from '@/lib/format'
+import { formatBytes } from '@/lib/format'
 import { usePrivateQuery } from '@/lib/private-query'
 import { cn } from '@/lib/utils'
 import { useConnection } from '@/stores/connection'
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex justify-between gap-4">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-mono">{children}</span>
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-b py-2.5 last:border-b-0">
+      <dt className="text-muted-foreground text-sm">{label}</dt>
+      <dd className="min-w-0 text-right font-mono text-sm [overflow-wrap:anywhere]">{children}</dd>
     </div>
   )
 }
 
+/** Server health from GET /app/metrics, polled every 30 s while connected. */
 export function MetricsCard() {
   const status = useConnection((state) => state.status)
   const { data, isLoading, error, refetch, isFetching } = usePrivateQuery({
@@ -33,66 +35,63 @@ export function MetricsCard() {
   const fs = data?.system.filesystem
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div className="flex flex-col gap-1.5">
-          <CardTitle>Server health</CardTitle>
-          <CardDescription>Reported by GET /app/metrics, refreshed every 30s</CardDescription>
-        </div>
+    <PaneSection
+      title="Kesehatan server"
+      description="Dilaporkan GET /app/metrics, diperbarui tiap 30 detik."
+      actions={
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Refresh metrics"
+          aria-label="Muat ulang metrik"
           disabled={isFetching}
           onClick={() => void refetch()}
         >
           <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} />
         </Button>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 text-sm">
-        {isLoading && <Skeleton className="h-32" />}
-        {error && (
-          <p className="text-muted-foreground">
-            {toApiError(error).status === 404
-              ? 'This server does not expose /app/metrics yet (needs a newer gowa release).'
-              : `Couldn't load metrics: ${toApiError(error).message}`}
-          </p>
-        )}
-        {/* A failed poll keeps the last data; hide it rather than show stale numbers. */}
-        {!error && data && memory && fs && (
-          <>
-            <Row label="Uptime">{formatDuration(data.system.uptime_seconds)}</Row>
-            <Row label="Devices (connected / logged in / total)">
-              {data.devices.connected} / {data.devices.logged_in} / {data.devices.total}
+      }
+    >
+      {isLoading && <Skeleton className="h-32" />}
+      {error && (
+        <p className="text-muted-foreground text-sm">
+          {toApiError(error).status === 404
+            ? 'Server ini belum menyediakan /app/metrics (perlu rilis GOWA yang lebih baru).'
+            : `Metrik gagal dimuat: ${toApiError(error).message}`}
+        </p>
+      )}
+      {/* A failed poll keeps the last data; hide it rather than show stale numbers. */}
+      {!error && data && memory && fs && (
+        <dl>
+          <Row label="Waktu aktif">{formatUptime(data.system.uptime_seconds)}</Row>
+          <Row label="Perangkat (tersambung / login / total)">
+            {data.devices.connected} / {data.devices.logged_in} / {data.devices.total}
+          </Row>
+          <Row label="Penyimpanan sesi">{data.session_store}</Row>
+          {memory.process_rss_bytes !== null ? (
+            <Row label="Memori (proses)">{formatBytes(memory.process_rss_bytes)}</Row>
+          ) : (
+            <Row label="Memori (runtime Go)">{formatBytes(memory.runtime_sys_bytes)}</Row>
+          )}
+          {memory.container_bytes !== null && (
+            <Row label="Memori (kontainer)">
+              {formatBytes(memory.container_bytes)}
+              {memory.container_limit_bytes !== null &&
+                ` dari ${formatBytes(memory.container_limit_bytes)}`}
             </Row>
-            <Row label="Session store">{data.session_store}</Row>
-            {memory.process_rss_bytes !== null ? (
-              <Row label="Memory (process)">{formatBytes(memory.process_rss_bytes)}</Row>
-            ) : (
-              <Row label="Memory (Go runtime)">{formatBytes(memory.runtime_sys_bytes)}</Row>
-            )}
-            {memory.container_bytes !== null && (
-              <Row label="Memory (container)">
-                {formatBytes(memory.container_bytes)}
-                {memory.container_limit_bytes !== null &&
-                  ` of ${formatBytes(memory.container_limit_bytes)}`}
-              </Row>
-            )}
-            {Object.entries(data.system.folders).map(([name, folder]) => (
-              <Row key={name} label={`Disk: ${name}`}>
-                {formatBytes(folder.bytes)} · {folder.files.toLocaleString()} files
-              </Row>
-            ))}
-            {fs.free_bytes !== null && fs.total_bytes !== null && (
-              <Row label="Volume free">
-                {formatBytes(fs.free_bytes)} of {formatBytes(fs.total_bytes)}
-              </Row>
-            )}
-            <Row label="Goroutines">{memory.goroutines.toLocaleString()}</Row>
-            <Row label="Go">{data.system.go_version}</Row>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          )}
+          {Object.entries(data.system.folders).map(([name, folder]) => (
+            <Row key={name} label={`Disk: ${name}`}>
+              {formatBytes(folder.bytes)} · {formatCount(folder.files)} berkas
+            </Row>
+          ))}
+          {fs.free_bytes !== null && fs.total_bytes !== null && (
+            <Row label="Ruang kosong volume">
+              {formatBytes(fs.free_bytes)} dari {formatBytes(fs.total_bytes)}
+            </Row>
+          )}
+          <Row label="Goroutine">{formatCount(memory.goroutines)}</Row>
+          <Row label="Versi Go">{data.system.go_version}</Row>
+        </dl>
+      )}
+    </PaneSection>
   )
 }

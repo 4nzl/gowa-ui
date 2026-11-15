@@ -32,6 +32,8 @@ export interface MessageInfo {
   reactions?: ReactionInfo[]
   /** JSON such as {"replied_to_id":"3EB0..."} when the message is a reply. */
   context_metadata?: string
+  /** JSON with call_id, auto_rejected, remote_platform… on synthetic media_type "call" rows. */
+  call_metadata?: string
   filename: string
   url: string
   file_length: number
