@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { MessagesSquare } from 'lucide-react'
 import { ChatList } from '@/features/chat/chat-list'
 import { MessageView } from '@/features/chat/message-view'
 import { EmptyPane, ListDetailLayout, ListPaneHeader } from '@/components/layout/list-detail'
 import { PageHeader } from '@/components/shared/page-header'
 import { selectedChatForDevice, type ChatSelection } from '@/features/chat/device-scope'
+import { placeholderChat, readOpenChat } from '@/features/chat/open-chat'
 import { DeviceGuard, useSelectedDevice } from '@/hooks/use-device-guard'
 import type { ChatInfo } from '@/api/chat'
 
@@ -12,6 +14,17 @@ export default function ChatsPage() {
   const device = useSelectedDevice()
   const [selection, setSelection] = useState<ChatSelection | null>(null)
   const selected = selectedChatForDevice(selection, device)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Deep link from Panggilan/Status: open the chat once, then drop the state so
+  // a reload or back navigation does not reopen it.
+  useEffect(() => {
+    const target = readOpenChat(location.state)
+    if (!target || !device) return
+    setSelection({ deviceId: device, chat: placeholderChat(target.jid, target.name) })
+    navigate(location.pathname, { replace: true, state: null })
+  }, [device, location.pathname, location.state, navigate])
 
   const handleSelect = (chat: ChatInfo) => {
     if (!device) return
