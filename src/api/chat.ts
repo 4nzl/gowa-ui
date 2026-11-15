@@ -1,4 +1,5 @@
 import type { Pagination } from '@/api/types'
+import { deviceHeaders } from '@/api/request'
 import { http, results } from '@/lib/http'
 
 export interface ChatInfo {
@@ -41,6 +42,7 @@ export interface ListChatsParams {
   offset?: number
   search?: string
   has_media?: boolean
+  archived?: boolean
 }
 
 export interface ChatMessagesParams {
@@ -73,19 +75,21 @@ export function getChatMessages(chatJid: string, params: ChatMessagesParams, dev
   )
 }
 
-export function pinChat(chatJid: string, pinned: boolean) {
-  return results(http.post(`/chat/${enc(chatJid)}/pin`, { pinned }))
+export function pinChat(chatJid: string, pinned: boolean, deviceId?: string) {
+  return results(http.post(`/chat/${enc(chatJid)}/pin`, { pinned }, deviceHeaders(deviceId)))
 }
 
-export function archiveChat(chatJid: string, archived: boolean) {
-  return results(http.post(`/chat/${enc(chatJid)}/archive`, { archived }))
+export function archiveChat(chatJid: string, archived: boolean, deviceId?: string) {
+  return results(http.post(`/chat/${enc(chatJid)}/archive`, { archived }, deviceHeaders(deviceId)))
 }
 
 /** Asks the phone for older messages; they arrive later through history sync. */
-export function requestChatHistory(chatJid: string, count: number) {
-  return results(http.post(`/chat/${enc(chatJid)}/history`, { count }))
+export function requestChatHistory(chatJid: string, count: number, deviceId?: string) {
+  return results(http.post(`/chat/${enc(chatJid)}/history`, { count }, deviceHeaders(deviceId)))
 }
 
-export function setDisappearing(chatJid: string, timer_seconds: number) {
-  return results(http.post(`/chat/${enc(chatJid)}/disappearing`, { timer_seconds }))
+export function setDisappearing(chatJid: string, timer_seconds: number, deviceId?: string) {
+  return results(
+    http.post(`/chat/${enc(chatJid)}/disappearing`, { timer_seconds }, deviceHeaders(deviceId)),
+  )
 }

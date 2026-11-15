@@ -1,40 +1,49 @@
-import { useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, History, Loader2, Send } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowDown, ArrowLeft, History, Loader2, PhoneIncoming, Search, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { getChatMessages, requestChatHistory, type ChatInfo, type MessageInfo } from '@/api/chat'
-import { sendText } from '@/api/send'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { ChatAvatar } from '@/features/chat/chat-avatar'
+import {
+  chatCaption,
+  chatTitle,
+  dayLabel,
+  formatBubbleTime,
+  isGroupJid,
+  mergeMessages,
+  messageSummary,
+  olderCursor,
+  sameDay,
+} from '@/features/chat/chat-format'
+import { ChatControls } from '@/features/chat/chat-controls'
+import { chatMessagesQueryKey } from '@/features/chat/device-scope'
+import { senderDisplayName } from '@/features/chat/display-name'
 import { FormattedText } from '@/features/chat/formatted-text'
 import { MessageMedia } from '@/features/chat/message-media'
-import { ChatControls } from '@/features/chat/chat-controls'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Switch } from '@/components/ui/switch'
-import { chatMessagesQueryKey } from '@/features/chat/device-scope'
+import { MessageComposer } from '@/features/composer/message-composer'
+import { toApiError } from '@/lib/api-error'
 import { connectionPlaceholder, trackedQueryFn } from '@/lib/private-query'
-import { useConnection } from '@/stores/connection'
-import { chatDisplayName, senderDisplayName } from '@/features/chat/display-name'
-import { useActionMutation } from '@/hooks/use-action-mutation'
-import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { ScheduleFields } from '@/features/send/schedule-fields'
-import { useScheduleDraft } from '@/features/send/use-schedule-draft'
+import { useConnection } from '@/stores/connection'
 
 const PAGE_SIZE = 30
-// The phone answers a history request later, through history sync. Poll for a
-// while afterwards so the older messages show up without a reload.
+/** No WebSocket event for new messages exists, so an open chat polls its newest page. */
+const LATEST_POLL_MS = 5_000
+// The phone answers a history request later, through history sync.
 const HISTORY_POLL_MS = 3_000
 const HISTORY_POLL_WINDOW_MS = 30_000
+const NEAR_BOTTOM_PX = 120
 
-function sortMessagesChronologically(messages: MessageInfo[]): MessageInfo[] {
-  return [...messages].sort((left, right) => {
-    return new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime()
-  })
-}
-
-function dayKey(timestamp: string): string {
-  return new Date(timestamp).toDateString()
-}
+const SENDER_TONES = [
+  'text-[#1f7aec]',
+  'text-[#d6336c]',
+  'text-[#0b8a6f]',
+  'text-[#c25e00]',
+  'text-[#7c4dff]',
+  'text-[#00838f]',
+]
 
 function repliedToId(message: MessageInfo): string | undefined {
   if (!message.context_metadata) return undefined
@@ -45,54 +54,116 @@ function repliedToId(message: MessageInfo): string | undefined {
   }
 }
 
+function senderTone(jid: string): string {
+  let hash = 0
+  for (let index = 0; index < jid.length; index++) hash = (hash * 33 + jid.charCodeAt(index)) | 0
+  return SENDER_TONES[Math.abs(hash) % SENDER_TONES.length]
+}
+
+function useDebounced<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay)
+    return () => window.clearTimeout(timer)
+  }, [value, delay])
+  return debounced
+}
+
 function MessageBubble({
   message,
   quoted,
   deviceId,
+  showSender,
+  continued,
 }: {
   message: MessageInfo
-  /** The replied-to message; null when it is not on this page, undefined when not a reply. */
-  quoted?: MessageInfo | null
+  /** The replied-to message; null when it is not loaded, undefined when not a reply. */
+  quoted: MessageInfo | null | undefined
   deviceId: string
+  showSender: boolean
+  continued: boolean
 }) {
-  const hasMedia = message.media_type && message.media_type !== ''
+  const mine = message.is_from_me
+  const hasMedia = Boolean(message.media_type) && message.media_type !== 'call'
+
+  if (message.media_type === 'call') {
+    return (
+      <div className="my-1.5 flex justify-center">
+        <span className="bg-card text-muted-foreground flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs shadow-xs">
+          <PhoneIncoming className="size-3.5" />
+          Panggilan masuk · {formatBubbleTime(message.timestamp)}
+        </span>
+      </div>
+    )
+  }
+
   return (
-    <div className={cn('flex', message.is_from_me ? 'justify-end' : 'justify-start')}>
+    <div
+      className={cn(
+        'flex',
+        mine ? 'justify-end' : 'justify-start',
+        continued ? 'mt-0.5' : 'mt-2',
+        message.reactions?.length ? 'mb-3' : '',
+      )}
+    >
       <div
         className={cn(
-          'max-w-[75%] min-w-0 rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] shadow-xs',
-          message.is_from_me ? 'bg-bubble-out rounded-br-sm' : 'bg-bubble-in rounded-bl-sm border',
+          'tab:max-w-[min(72%,600px)] relative max-w-[min(88%,560px)] min-w-[88px] rounded-lg px-2 pt-1.5 pb-1 text-[14.5px] leading-[1.35] [overflow-wrap:anywhere] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]',
+          mine ? 'bg-bubble-out' : 'bg-bubble-in',
+          !continued && (mine ? 'rounded-tr-none' : 'rounded-tl-none'),
         )}
       >
-        {!message.is_from_me && (
-          <p className="text-muted-foreground mb-0.5 font-mono text-xs">
+        {showSender && (
+          <p
+            className={cn(
+              'mb-0.5 px-0.5 text-[12.5px] font-medium',
+              senderTone(message.sender_jid),
+            )}
+          >
             {senderDisplayName(message)}
           </p>
         )}
         {quoted !== undefined && (
-          <div className="border-primary/60 bg-background/50 mb-1 rounded-md border-l-2 px-2 py-1 text-xs">
+          <div className="border-primary bg-foreground/5 mb-1 rounded-md border-l-4 px-2 py-1 text-xs">
             {quoted ? (
               <>
-                <p className="text-muted-foreground font-mono">
-                  {quoted.is_from_me ? 'You' : senderDisplayName(quoted)}
+                <p className="text-primary font-medium">
+                  {quoted.is_from_me ? 'Anda' : senderDisplayName(quoted)}
                 </p>
-                <p className="line-clamp-2 break-words">
-                  {quoted.content || quoted.media_type || 'Message'}
-                </p>
+                <p className="text-muted-foreground line-clamp-2">{messageSummary(quoted)}</p>
               </>
             ) : (
-              <p className="text-muted-foreground italic">Reply to an earlier message</p>
+              <p className="text-muted-foreground italic">Membalas pesan sebelumnya</p>
             )}
           </div>
         )}
-        {message.content && <FormattedText text={message.content} />}
         {hasMedia && <MessageMedia message={message} deviceId={deviceId} />}
-        {message.reactions && message.reactions.length > 0 && (
-          <p className="mt-1 text-xs">{message.reactions.map((r) => r.emoji).join(' ')}</p>
+        {message.content && (
+          <FormattedText text={message.content} className={cn('px-0.5', hasMedia && 'mt-1')} />
         )}
-        <p className="text-muted-foreground mt-1 text-right text-[10px]">
-          {formatDate(message.timestamp)}
-        </p>
+        <span className="text-muted-foreground float-right mt-0.5 ml-3 translate-y-0.5 text-[11px] leading-4">
+          {formatBubbleTime(message.timestamp)}
+        </span>
+        <span className="clear-both block" />
+        {message.reactions && message.reactions.length > 0 && (
+          <span
+            className={cn(
+              'bg-card absolute -bottom-3.5 flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs shadow-xs',
+              mine ? 'right-2' : 'left-2',
+            )}
+            title={message.reactions
+              .map(
+                (reaction) =>
+                  `${reaction.emoji} ${reaction.is_from_me ? 'Anda' : reaction.sender_display_name || reaction.sender_jid}`,
+              )
+              .join('\n')}
+          >
+            {[...new Set(message.reactions.map((reaction) => reaction.emoji))].join('')}
+            {message.reactions.length > 1 && (
+              <span className="text-muted-foreground ml-0.5">{message.reactions.length}</span>
+            )}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -110,224 +181,363 @@ export function MessageView({
 }) {
   const queryClient = useQueryClient()
   const connectionId = useConnection((state) => state.connectionId)
-  const messageList = useRef<HTMLDivElement>(null)
-  const [search, setSearch] = useState('')
+  const scroller = useRef<HTMLDivElement>(null)
+  const content = useRef<HTMLDivElement>(null)
+  const topSentinel = useRef<HTMLDivElement>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
   const [mediaOnly, setMediaOnly] = useState(false)
-  const [offset, setOffset] = useState(0)
-  const [draft, setDraft] = useState('')
+  const search = useDebounced(searchInput.trim(), 350)
+  const [anchor, setAnchor] = useState<string | undefined>()
   const [historyPollUntil, setHistoryPollUntil] = useState(0)
-  const { draft: scheduleDraft, patch: patchSchedule, reset: resetSchedule } = useScheduleDraft()
+  const [historyPending, setHistoryPending] = useState(false)
+  const [unseen, setUnseen] = useState(0)
+  const stickToBottom = useRef(true)
+  const filtering = search !== '' || mediaOnly
 
-  const filters = { search, mediaOnly, offset }
-  const query = useQuery({
-    queryKey: chatMessagesQueryKey(deviceId, chat.jid, filters, connectionId),
+  // A new filter starts paging from its own newest page.
+  useEffect(() => setAnchor(undefined), [search, mediaOnly])
+
+  const latest = useQuery({
+    queryKey: chatMessagesQueryKey(
+      deviceId,
+      chat.jid,
+      { search, mediaOnly, offset: 0 },
+      connectionId,
+    ),
     queryFn: trackedQueryFn(connectionId, () =>
       getChatMessages(
         chat.jid,
-        {
-          search: search || undefined,
-          media_only: mediaOnly || undefined,
-          limit: PAGE_SIZE,
-          offset,
-        },
+        { search: search || undefined, media_only: mediaOnly || undefined, limit: PAGE_SIZE },
         deviceId,
       ),
     ),
     enabled: connectionId !== null,
-    refetchInterval: () => (Date.now() < historyPollUntil ? HISTORY_POLL_MS : false),
+    refetchInterval: filtering ? false : LATEST_POLL_MS,
     placeholderData:
       connectionPlaceholder<Awaited<ReturnType<typeof getChatMessages>>>(connectionId),
   })
 
+  const olderPages = useInfiniteQuery({
+    queryKey: [
+      'chat-messages',
+      deviceId,
+      chat.jid,
+      'older',
+      search,
+      mediaOnly,
+      anchor,
+      connectionId,
+    ],
+    initialPageParam: anchor ?? '',
+    queryFn: async ({ pageParam }) => {
+      const run = trackedQueryFn(connectionId, () =>
+        getChatMessages(
+          chat.jid,
+          {
+            search: search || undefined,
+            media_only: mediaOnly || undefined,
+            limit: PAGE_SIZE,
+            end_time: pageParam,
+          },
+          deviceId,
+        ),
+      )
+      return run()
+    },
+    getNextPageParam: (lastPage, _pages, lastParam) => {
+      const cursor = olderCursor(lastPage.data, PAGE_SIZE)
+      return cursor && cursor !== lastParam ? cursor : undefined
+    },
+    enabled: connectionId !== null && anchor !== undefined,
+    refetchInterval: () => (Date.now() < historyPollUntil ? HISTORY_POLL_MS : false),
+  })
+
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = olderPages
+  const latestPage = latest.data?.data
   const messages = useMemo(
-    () => sortMessagesChronologically(query.data?.data ?? []),
-    [query.data?.data],
+    () =>
+      mergeMessages(...(olderPages.data?.pages.map((page) => page.data) ?? []), latestPage ?? []),
+    [olderPages.data, latestPage],
   )
   const messagesById = useMemo(
     () => new Map(messages.map((message) => [message.id, message])),
     [messages],
   )
-  const total = query.data?.pagination.total ?? 0
-  const responseChat = query.data?.chat_info
+  const responseChat = latest.data?.chat_info
   const resolvedChat = responseChat?.jid === chat.jid ? responseChat : chat
+  const group = isGroupJid(chat.jid)
 
-  useLayoutEffect(() => {
-    const viewport = messageList.current?.querySelector<HTMLElement>(
-      '[data-slot="scroll-area-viewport"]',
-    )
-    if (viewport) viewport.scrollTop = viewport.scrollHeight
-  }, [chat.jid, messages])
+  const latestIsPartial = latestPage !== undefined && latestPage.length < PAGE_SIZE
+  const reachedOldest =
+    latestIsPartial || (anchor !== undefined && olderPages.isSuccess && !olderPages.hasNextPage)
+  const loadingOlder = olderPages.isFetching && !olderPages.isRefetching
 
-  const sendMutation = useActionMutation(
-    (message: string) => sendText({ phone: chat.jid, message, ...scheduleDraft }),
-    {
-      successMessage: (r) => (r.schedule_id ? r.status : 'Message sent'),
-      onSuccess: () => {
-        setDraft('')
-        resetSchedule()
-        void queryClient.invalidateQueries({
-          queryKey: ['chat-messages', deviceId, chat.jid],
-        })
+  // Load older pages when the top of the thread comes into view.
+  useEffect(() => {
+    const root = scroller.current
+    const target = topSentinel.current
+    if (!root || !target || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting) || !latestPage) return
+        if (anchor === undefined) {
+          const cursor = olderCursor(latestPage, PAGE_SIZE)
+          if (cursor) setAnchor(cursor)
+        } else if (hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage()
+        }
       },
-    },
-  )
+      { root, rootMargin: '300px 0px 0px 0px' },
+    )
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [anchor, latestPage, hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  const replyTarget = (message: MessageInfo) => {
-    const id = repliedToId(message)
-    return id === undefined ? undefined : (messagesById.get(id) ?? null)
+  // Scroll handling: stay pinned to the bottom when the user is there, keep the
+  // reading position when older messages are prepended.
+  const previous = useRef({ first: '', last: '', height: 0, top: 0 })
+  useLayoutEffect(() => {
+    const element = scroller.current
+    if (!element || messages.length === 0) return
+    const first = messages[0].id
+    const last = messages[messages.length - 1].id
+    const before = previous.current
+    if (!before.last || stickToBottom.current) {
+      element.scrollTop = element.scrollHeight
+    } else if (first !== before.first && last === before.last) {
+      element.scrollTop = before.top + (element.scrollHeight - before.height)
+    } else if (last !== before.last) {
+      const arrived = messages.findIndex((message) => message.id === before.last)
+      const fresh = arrived === -1 ? 1 : messages.length - 1 - arrived
+      if (messages[messages.length - 1].is_from_me) element.scrollTop = element.scrollHeight
+      else setUnseen((count) => count + fresh)
+    }
+    previous.current = { first, last, height: element.scrollHeight, top: element.scrollTop }
+  }, [messages])
+
+  // Images load after layout; keep the bottom pinned while they grow.
+  useEffect(() => {
+    const element = scroller.current
+    const inner = content.current
+    if (!element || !inner || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      if (stickToBottom.current) element.scrollTop = element.scrollHeight
+      previous.current.height = element.scrollHeight
+    })
+    observer.observe(inner)
+    return () => observer.disconnect()
+  }, [])
+
+  const onScroll = () => {
+    const element = scroller.current
+    if (!element) return
+    const near = element.scrollHeight - element.scrollTop - element.clientHeight < NEAR_BOTTOM_PX
+    stickToBottom.current = near
+    if (near && unseen) setUnseen(0)
+    previous.current.top = element.scrollTop
+    previous.current.height = element.scrollHeight
   }
 
-  const historyMutation = useActionMutation(() => requestChatHistory(chat.jid, PAGE_SIZE), {
-    successMessage: 'Asked the phone for older messages; they appear once it answers',
-    onSuccess: () => setHistoryPollUntil(Date.now() + HISTORY_POLL_WINDOW_MS),
-  })
-
-  const onSend = (event: FormEvent) => {
-    event.preventDefault()
-    if (draft.trim()) sendMutation.mutate(draft.trim())
+  const scrollToBottom = () => {
+    const element = scroller.current
+    if (!element) return
+    stickToBottom.current = true
+    setUnseen(0)
+    element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' })
   }
+
+  const askPhoneForHistory = async () => {
+    setHistoryPending(true)
+    try {
+      await requestChatHistory(chat.jid, PAGE_SIZE, deviceId)
+      toast.success('Ponsel diminta mengirim pesan lama; pesan muncul setelah ponsel menjawab')
+      setHistoryPollUntil(Date.now() + HISTORY_POLL_WINDOW_MS)
+      if (anchor === undefined && latestPage?.length) {
+        setAnchor(
+          olderCursor(latestPage, latestPage.length) ?? latestPage[latestPage.length - 1].timestamp,
+        )
+      }
+      window.setTimeout(() => void latest.refetch(), HISTORY_POLL_MS)
+    } catch (error) {
+      toast.error(toApiError(error).message)
+    } finally {
+      setHistoryPending(false)
+    }
+  }
+
+  const onSent = () => {
+    stickToBottom.current = true
+    void queryClient.invalidateQueries({ queryKey: ['chat-messages', deviceId, chat.jid] })
+    void queryClient.invalidateQueries({ queryKey: ['chats', deviceId] })
+  }
+
+  const title = chatTitle(resolvedChat)
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex items-start justify-between gap-2 border-b pb-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="bg-card tab:px-4 flex h-16 shrink-0 items-center gap-2 border-b px-2">
         {onBack && (
           <Button
             variant="ghost"
             size="icon"
-            className="tab:hidden -ml-1 size-10 shrink-0 rounded-full"
+            className="tab:hidden size-10 shrink-0 rounded-full"
             aria-label="Kembali ke daftar chat"
             onClick={onBack}
           >
             <ArrowLeft className="size-5" />
           </Button>
         )}
+        <ChatAvatar jid={chat.jid} name={title} className="size-10" />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-medium">{chatDisplayName(resolvedChat)}</h2>
-          <p className="text-muted-foreground truncate font-mono text-xs">{resolvedChat.jid}</p>
+          <h2 className="truncate font-medium">{title}</h2>
+          <p className="text-muted-foreground truncate text-xs">{chatCaption(resolvedChat)}</p>
         </div>
-        <ChatControls chat={resolvedChat} />
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <Input
-          className="sm:max-w-xs"
-          placeholder="Search messages"
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value)
-            setOffset(0)
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn('size-10 shrink-0 rounded-full', searchOpen && 'bg-accent')}
+          aria-label="Cari di percakapan"
+          aria-pressed={searchOpen}
+          onClick={() => {
+            setSearchOpen((open) => !open)
+            if (searchOpen) {
+              setSearchInput('')
+              setMediaOnly(false)
+            }
           }}
-        />
-        <label className="text-muted-foreground flex items-center gap-2 text-sm">
-          <Switch
-            checked={mediaOnly}
-            onCheckedChange={(value) => {
-              setMediaOnly(value)
-              setOffset(0)
-            }}
-          />
-          Media only
-        </label>
-      </div>
+        >
+          <Search className="size-5" />
+        </Button>
+        <ChatControls chat={resolvedChat} deviceId={deviceId} />
+      </header>
 
-      <div ref={messageList} className="min-h-0 flex-1">
-        <ScrollArea className="bg-muted/40 size-full rounded-lg border p-3 [&_[data-slot=scroll-area-viewport]>div]:!block">
-          {query.isLoading ? (
-            <div className="flex justify-center p-6">
-              <Loader2 className="text-muted-foreground size-5 animate-spin" />
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="text-muted-foreground flex flex-col gap-1 p-6 text-center text-sm">
-              <p>No messages stored for this chat yet.</p>
-              <p className="text-xs">
-                Messages appear here as they are sent or received, and as WhatsApp history sync
-                batches are processed after pairing. Contacts synced from your address book start
-                without message history.
+      {searchOpen && (
+        <div className="bg-card tab:px-4 flex flex-wrap items-center gap-2 border-b px-3 py-2">
+          <label className="bg-muted flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full px-3">
+            <Search className="text-muted-foreground size-4 shrink-0" />
+            <input
+              autoFocus
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Cari pesan"
+              aria-label="Cari pesan"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            />
+            {searchInput && (
+              <button type="button" aria-label="Hapus pencarian" onClick={() => setSearchInput('')}>
+                <X className="text-muted-foreground size-4" />
+              </button>
+            )}
+          </label>
+          <label className="text-muted-foreground flex items-center gap-2 text-sm">
+            <Switch checked={mediaOnly} onCheckedChange={setMediaOnly} />
+            Media saja
+          </label>
+        </div>
+      )}
+
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scroller}
+          onScroll={onScroll}
+          className="chat-wallpaper h-full overflow-y-auto overscroll-contain"
+          role="log"
+          aria-label={`Pesan dengan ${title}`}
+          aria-live="polite"
+        >
+          <div ref={content} className="tab:px-[6%] mx-auto flex max-w-4xl flex-col px-3 py-3">
+            <div ref={topSentinel} className="h-px" />
+            {loadingOlder && (
+              <div
+                className="flex justify-center py-2"
+                role="status"
+                aria-label="Memuat pesan lama"
+              >
+                <Loader2 className="text-muted-foreground size-5 animate-spin" />
+              </div>
+            )}
+            {reachedOldest && !filtering && (
+              <div className="flex justify-center py-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-card/90 rounded-full shadow-xs"
+                  disabled={historyPending}
+                  onClick={() => void askPhoneForHistory()}
+                >
+                  {historyPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <History className="size-4" />
+                  )}
+                  Minta pesan lama dari ponsel
+                </Button>
+              </div>
+            )}
+
+            {latest.isLoading ? (
+              <div className="flex justify-center py-10" role="status" aria-label="Memuat pesan">
+                <Loader2 className="text-muted-foreground size-6 animate-spin" />
+              </div>
+            ) : latest.isError ? (
+              <p className="bg-card text-destructive mx-auto my-6 rounded-lg px-4 py-3 text-sm">
+                Pesan gagal dimuat: {toApiError(latest.error).message}
               </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {messages.map((message, index) => {
-                const showDateSeparator =
-                  index === 0 || dayKey(message.timestamp) !== dayKey(messages[index - 1].timestamp)
+            ) : messages.length === 0 ? (
+              <p className="bg-card text-muted-foreground mx-auto my-6 rounded-lg px-4 py-3 text-center text-sm shadow-xs">
+                {filtering
+                  ? 'Tidak ada pesan yang cocok.'
+                  : 'Belum ada pesan tersimpan untuk chat ini.'}
+              </p>
+            ) : (
+              messages.map((message, index) => {
+                const prev = messages[index - 1]
+                const newDay = !prev || !sameDay(prev.timestamp, message.timestamp)
+                const continued =
+                  !newDay &&
+                  prev.is_from_me === message.is_from_me &&
+                  prev.sender_jid === message.sender_jid &&
+                  prev.media_type !== 'call'
+                const replyId = repliedToId(message)
                 return (
                   <div key={message.id}>
-                    {showDateSeparator && (
-                      <div className="flex justify-center py-1">
-                        <span className="bg-card text-muted-foreground rounded-full border px-3 py-0.5 text-xs shadow-xs">
-                          {new Date(message.timestamp).toLocaleDateString(undefined, {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
+                    {newDay && (
+                      <div className="my-2 flex justify-center">
+                        <span className="bg-card text-muted-foreground rounded-lg px-3 py-1 text-xs shadow-xs">
+                          {dayLabel(message.timestamp)}
                         </span>
                       </div>
                     )}
                     <MessageBubble
                       message={message}
-                      quoted={replyTarget(message)}
+                      quoted={
+                        replyId === undefined ? undefined : (messagesById.get(replyId) ?? null)
+                      }
                       deviceId={deviceId}
+                      showSender={group && !message.is_from_me && !continued}
+                      continued={continued}
                     />
                   </div>
                 )
-              })}
-            </div>
-          )}
-        </ScrollArea>
-      </div>
-
-      <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-1 text-xs">
-        <span>{total} messages</span>
-        <div className="flex flex-wrap justify-end gap-1">
-          {total > 0 && offset + PAGE_SIZE >= total && (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={historyMutation.isPending}
-              onClick={() => historyMutation.mutate(undefined)}
-            >
-              <History className="size-4" />
-              Fetch older from phone
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={offset === 0}
-            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-          >
-            Newer
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={offset + PAGE_SIZE >= total}
-            onClick={() => setOffset(offset + PAGE_SIZE)}
-          >
-            Older
-          </Button>
-        </div>
-      </div>
-
-      {/* Inside the form so the schedule's native constraints gate Send. */}
-      <form className="flex flex-col gap-3" onSubmit={onSend}>
-        <ScheduleFields draft={scheduleDraft} patch={patchSchedule} />
-        <div className="flex gap-2">
-          <Input
-            placeholder="Type a message"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-          <Button type="submit" disabled={sendMutation.isPending || !draft.trim()}>
-            {sendMutation.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Send className="size-4" />
+              })
             )}
-            Send
-          </Button>
+          </div>
         </div>
-      </form>
+
+        {unseen > 0 && (
+          <Button
+            size="sm"
+            className="absolute right-4 bottom-4 rounded-full shadow-md"
+            onClick={scrollToBottom}
+          >
+            <ArrowDown className="size-4" />
+            {unseen} pesan baru
+          </Button>
+        )}
+      </div>
+
+      <MessageComposer chatJid={chat.jid} deviceId={deviceId} onSent={onSent} />
     </div>
   )
 }

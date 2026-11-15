@@ -49,10 +49,8 @@ export default function ChatsPage() {
           hasSelection && 'max-tab:hidden',
         )}
       >
-        <h1 className="tab:block hidden px-4 pt-4 pb-2 text-2xl font-semibold tracking-tight">
-          Chat
-        </h1>
-        <div className="tab:pt-0 min-h-0 flex-1 px-3 pt-3 pb-3">
+        <h1 className="px-4 pt-4 pb-3 text-2xl font-semibold tracking-tight">Chat</h1>
+        <div className="min-h-0 flex-1">
           <ChatList
             key={device}
             deviceId={device}
@@ -70,7 +68,7 @@ export default function ChatsPage() {
         )}
       >
         {selected ? (
-          <div className="min-h-0 flex-1 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="min-h-0 flex-1">
             <MessageView
               key={`${device}:${selected.jid}`}
               chat={selected}

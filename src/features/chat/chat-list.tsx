@@ -1,19 +1,27 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Loader2, Search } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { Loader2, Search, X } from 'lucide-react'
 import { listChats, type ChatInfo } from '@/api/chat'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Switch } from '@/components/ui/switch'
+import { ChatAvatar } from '@/features/chat/chat-avatar'
+import { chatCaption, chatTitle, formatChatTime, isGroupJid } from '@/features/chat/chat-format'
 import { chatListQueryKey } from '@/features/chat/device-scope'
-import { chatDisplayName } from '@/features/chat/display-name'
-import { formatDate, isZeroTime } from '@/lib/format'
-import { connectionPlaceholder, trackedQueryFn } from '@/lib/private-query'
+import { toApiError } from '@/lib/api-error'
+import { trackedQueryFn } from '@/lib/private-query'
 import { cn } from '@/lib/utils'
 import { useConnection } from '@/stores/connection'
 
-const PAGE_SIZE = 25
+const PAGE_SIZE = 30
+/** New chats and reordering only show up by asking again; GOWA has no chat-list event. */
+const LIST_POLL_MS = 30_000
+
+export type ChatFilter = 'all' | 'groups' | 'media' | 'archived'
+
+const FILTERS: { id: ChatFilter; label: string }[] = [
+  { id: 'all', label: 'Semua' },
+  { id: 'groups', label: 'Grup' },
+  { id: 'media', label: 'Ada media' },
+  { id: 'archived', label: 'Arsip' },
+]
 
 export function ChatList({
   deviceId,
@@ -25,118 +33,176 @@ export function ChatList({
   onSelect: (chat: ChatInfo) => void
 }) {
   const connectionId = useConnection((state) => state.connectionId)
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
-  const [hasMedia, setHasMedia] = useState(false)
-  const [offset, setOffset] = useState(0)
-  const filters = { search, hasMedia, offset }
+  const [filter, setFilter] = useState<ChatFilter>('all')
+  const bottomSentinel = useRef<HTMLLIElement>(null)
+  const scroller = useRef<HTMLDivElement>(null)
 
-  const query = useQuery({
-    queryKey: chatListQueryKey(deviceId, filters, connectionId),
-    queryFn: trackedQueryFn(connectionId, () =>
-      listChats(
-        {
-          search: search || undefined,
-          has_media: hasMedia || undefined,
-          limit: PAGE_SIZE,
-          offset,
-        },
-        deviceId,
-      ),
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [searchInput])
+
+  const query = useInfiniteQuery({
+    queryKey: chatListQueryKey(
+      deviceId,
+      { search, hasMedia: filter === 'media', archived: filter === 'archived' },
+      connectionId,
     ),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      trackedQueryFn(connectionId, () =>
+        listChats(
+          {
+            search: search || undefined,
+            has_media: filter === 'media' || undefined,
+            archived: filter === 'archived' || undefined,
+            limit: PAGE_SIZE,
+            offset: pageParam,
+          },
+          deviceId,
+        ),
+      )(),
+    getNextPageParam: (lastPage, pages) => {
+      const loaded = pages.reduce((count, page) => count + page.data.length, 0)
+      return loaded < lastPage.pagination.total && lastPage.data.length > 0 ? loaded : undefined
+    },
     enabled: connectionId !== null,
-    placeholderData: connectionPlaceholder<Awaited<ReturnType<typeof listChats>>>(connectionId),
+    refetchInterval: LIST_POLL_MS,
   })
 
-  const chats = query.data?.data ?? []
-  const total = query.data?.pagination.total ?? 0
+  const chats = useMemo(() => {
+    const seen = new Set<string>()
+    const all = (query.data?.pages ?? []).flatMap((page) => page.data)
+    return all.filter((chat) => {
+      if (seen.has(chat.jid)) return false
+      seen.add(chat.jid)
+      return filter !== 'groups' || isGroupJid(chat.jid)
+    })
+  }, [query.data, filter])
+
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query
+  useEffect(() => {
+    const root = scroller.current
+    const target = bottomSentinel.current
+    if (!root || !target || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting) && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage()
+        }
+      },
+      { root, rootMargin: '200px' },
+    )
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, chats.length])
+
+  const total = query.data?.pages[0]?.pagination.total ?? 0
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex flex-col gap-2">
-        <div className="relative">
-          <Search className="text-muted-foreground absolute top-2.5 left-2 size-4" />
-          <Input
-            className="pl-8"
-            placeholder="Search chats"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value)
-              setOffset(0)
-            }}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="px-3 pb-1">
+        <label className="bg-muted flex h-10 items-center gap-2 rounded-full px-3.5">
+          <Search className="text-muted-foreground size-4 shrink-0" />
+          <input
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Cari nama atau nomor"
+            aria-label="Cari chat"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
-        </div>
-        <label className="text-muted-foreground flex items-center gap-2 text-sm">
-          <Switch
-            checked={hasMedia}
-            onCheckedChange={(value) => {
-              setHasMedia(value)
-              setOffset(0)
-            }}
-          />
-          With media only
+          {searchInput && (
+            <button type="button" aria-label="Hapus pencarian" onClick={() => setSearchInput('')}>
+              <X className="text-muted-foreground size-4" />
+            </button>
+          )}
         </label>
+        <div
+          role="tablist"
+          aria-label="Filter chat"
+          className="flex gap-1.5 overflow-x-auto py-2.5"
+        >
+          {FILTERS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === item.id}
+              onClick={() => setFilter(item.id)}
+              className={cn(
+                'shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors',
+                filter === item.id
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-accent',
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 rounded-md border [&_[data-slot=scroll-area-viewport]>div]:!block">
+      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {query.isLoading ? (
-          <div className="flex justify-center p-6">
+          <div className="flex justify-center p-6" role="status" aria-label="Memuat chat">
             <Loader2 className="text-muted-foreground size-5 animate-spin" />
           </div>
-        ) : chats.length === 0 ? (
-          <p className="text-muted-foreground p-6 text-center text-sm">No chats found</p>
+        ) : query.isError ? (
+          <p className="text-destructive p-6 text-center text-sm">
+            Chat gagal dimuat: {toApiError(query.error).message}
+          </p>
+        ) : chats.length === 0 && !hasNextPage ? (
+          <p className="text-muted-foreground p-6 text-center text-sm">
+            {search ? 'Tidak ada chat yang cocok.' : 'Belum ada chat.'}
+          </p>
         ) : (
-          <ul className="divide-y">
-            {chats.map((chat) => (
-              <li key={chat.jid}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(chat)}
-                  className={cn(
-                    'hover:bg-muted/50 flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
-                    selectedJid === chat.jid && 'bg-accent/60',
-                  )}
-                >
-                  <span className="bg-accent font-heading text-accent-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
-                    {chatDisplayName(chat).slice(0, 1).toUpperCase()}
-                  </span>
-                  <span className="flex min-w-0 flex-col">
-                    <span className="w-full truncate text-sm font-medium">
-                      {chatDisplayName(chat)}
+          <ul>
+            {chats.map((chat) => {
+              const name = chatTitle(chat)
+              const selected = selectedJid === chat.jid
+              return (
+                <li key={chat.jid}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(chat)}
+                    aria-current={selected ? 'true' : undefined}
+                    className={cn(
+                      'flex min-h-[72px] w-full items-center gap-3 px-3 text-left transition-colors',
+                      'focus-visible:ring-ring outline-none focus-visible:ring-2 focus-visible:ring-inset',
+                      selected ? 'bg-accent' : 'hover:bg-accent/60',
+                    )}
+                  >
+                    <ChatAvatar jid={chat.jid} name={name} className="size-12 text-lg" />
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5 border-b py-3">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="truncate text-[15.5px] font-medium">{name}</span>
+                        <time className="text-muted-foreground shrink-0 text-xs">
+                          {formatChatTime(chat.last_message_time)}
+                        </time>
+                      </span>
+                      <span className="text-muted-foreground truncate text-[13.5px]">
+                        {chat.archived && filter !== 'archived' ? 'Diarsipkan · ' : ''}
+                        {chatCaption(chat)}
+                      </span>
                     </span>
-                    <span className="text-muted-foreground w-full truncate text-xs">
-                      {isZeroTime(chat.last_message_time)
-                        ? chat.jid
-                        : formatDate(chat.last_message_time)}
-                    </span>
-                  </span>
-                </button>
+                  </button>
+                </li>
+              )
+            })}
+            <li ref={bottomSentinel} className="h-px" aria-hidden />
+            {isFetchingNextPage && (
+              <li className="flex justify-center py-3" role="status" aria-label="Memuat chat lain">
+                <Loader2 className="text-muted-foreground size-4 animate-spin" />
               </li>
-            ))}
+            )}
           </ul>
         )}
-      </ScrollArea>
-
-      <div className="text-muted-foreground flex items-center justify-between text-xs">
-        <span>{total} chats</span>
-        <div className="flex gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={offset === 0}
-            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-          >
-            Prev
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={offset + PAGE_SIZE >= total}
-            onClick={() => setOffset(offset + PAGE_SIZE)}
-          >
-            Next
-          </Button>
-        </div>
       </div>
+      <p className="text-muted-foreground border-t px-4 py-2 text-xs">
+        {filter === 'groups' ? `${chats.length} grup dimuat dari ${total} chat` : `${total} chat`}
+      </p>
     </div>
   )
 }

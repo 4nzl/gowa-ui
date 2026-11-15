@@ -49,8 +49,16 @@ function toFormData(form: NonNullable<ApiRequest['form']>): FormData {
   return data
 }
 
-/** Send a described request and unwrap the gowa envelope. */
-export function exec<T>(request: ApiRequest): Promise<T> {
+/** Explicit device scope for a request; omitted, the interceptor uses the selected device. */
+export function deviceHeaders(deviceId?: string): { headers?: Record<string, string> } {
+  return deviceId ? { headers: { 'X-Device-Id': encodeURIComponent(deviceId) } } : {}
+}
+
+/**
+ * Send a described request and unwrap the gowa envelope. Pass `deviceId` to pin
+ * the request to that device instead of whatever is selected when it fires.
+ */
+export function exec<T>(request: ApiRequest, deviceId?: string): Promise<T> {
   const body = request.form ? toFormData(request.form) : request.json
-  return results<T>(http.post(request.path, body))
+  return results<T>(http.post(request.path, body, deviceHeaders(deviceId)))
 }

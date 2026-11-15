@@ -56,8 +56,8 @@ export function textRequest(payload: TextPayload): ApiRequest {
   return { method: 'POST', path: '/send/message', json: clean(withSchedule(payload)) }
 }
 
-export function sendText(payload: TextPayload): Promise<SendResult> {
-  return exec(textRequest(payload))
+export function sendText(payload: TextPayload, deviceId?: string): Promise<SendResult> {
+  return exec(textRequest(payload), deviceId)
 }
 
 export interface MediaPayload extends ScheduleFields {
@@ -107,8 +107,8 @@ export function imageRequest(p: ImagePayload): ApiRequest {
   }
 }
 
-export function sendImage(p: ImagePayload): Promise<SendResult> {
-  return exec(imageRequest(p))
+export function sendImage(p: ImagePayload, deviceId?: string): Promise<SendResult> {
+  return exec(imageRequest(p), deviceId)
 }
 
 export function fileRequest(p: MediaPayload): ApiRequest {
@@ -130,8 +130,8 @@ export function fileRequest(p: MediaPayload): ApiRequest {
   }
 }
 
-export function sendFile(p: MediaPayload): Promise<SendResult> {
-  return exec(fileRequest(p))
+export function sendFile(p: MediaPayload, deviceId?: string): Promise<SendResult> {
+  return exec(fileRequest(p), deviceId)
 }
 
 export type VideoPayload = MediaPayload & {
@@ -165,8 +165,8 @@ export function videoRequest(p: VideoPayload): ApiRequest {
   }
 }
 
-export function sendVideo(p: VideoPayload): Promise<SendResult> {
-  return exec(videoRequest(p))
+export function sendVideo(p: VideoPayload, deviceId?: string): Promise<SendResult> {
+  return exec(videoRequest(p), deviceId)
 }
 
 export function stickerRequest(p: MediaPayload): ApiRequest {
@@ -210,8 +210,8 @@ export function audioRequest(p: AudioPayload): ApiRequest {
   }
 }
 
-export function sendAudio(p: AudioPayload): Promise<SendResult> {
-  return exec(audioRequest(p))
+export function sendAudio(p: AudioPayload, deviceId?: string): Promise<SendResult> {
+  return exec(audioRequest(p), deviceId)
 }
 
 export interface ContactPayload extends ScheduleFields {

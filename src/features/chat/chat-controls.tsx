@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Archive, MoreVertical, Pin, Timer } from 'lucide-react'
+import { Archive, ArchiveRestore, MoreVertical, Pin, PinOff, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { archiveChat, pinChat, setDisappearing, type ChatInfo } from '@/api/chat'
 import { Button } from '@/components/ui/button'
@@ -14,20 +14,20 @@ import {
 import { toApiError } from '@/lib/api-error'
 
 const DISAPPEARING_OPTIONS: { label: string; seconds: number }[] = [
-  { label: 'Off', seconds: 0 },
-  { label: '24 hours', seconds: 86_400 },
-  { label: '7 days', seconds: 604_800 },
-  { label: '90 days', seconds: 7_776_000 },
+  { label: 'Nonaktif', seconds: 0 },
+  { label: '24 jam', seconds: 86_400 },
+  { label: '7 hari', seconds: 604_800 },
+  { label: '90 hari', seconds: 7_776_000 },
 ]
 
-export function ChatControls({ chat }: { chat: ChatInfo }) {
+export function ChatControls({ chat, deviceId }: { chat: ChatInfo; deviceId: string }) {
   const queryClient = useQueryClient()
 
   const run = async (label: string, action: () => Promise<unknown>) => {
     try {
       await action()
       toast.success(label)
-      void queryClient.invalidateQueries({ queryKey: ['chats'] })
+      void queryClient.invalidateQueries({ queryKey: ['chats', deviceId] })
     } catch (error) {
       toast.error(toApiError(error).message)
     }
@@ -36,36 +36,41 @@ export function ChatControls({ chat }: { chat: ChatInfo }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Chat actions">
-          <MoreVertical className="size-4" />
+        <Button variant="ghost" size="icon" className="size-10 rounded-full" aria-label="Menu chat">
+          <MoreVertical className="size-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => run('Chat pinned', () => pinChat(chat.jid, true))}>
-          <Pin className="size-4" /> Pin
+        <DropdownMenuItem
+          onClick={() => run('Chat disematkan di ponsel', () => pinChat(chat.jid, true, deviceId))}
+        >
+          <Pin className="size-4" /> Sematkan
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => run('Chat unpinned', () => pinChat(chat.jid, false))}>
-          <Pin className="size-4" /> Unpin
+        <DropdownMenuItem
+          onClick={() => run('Sematan chat dilepas', () => pinChat(chat.jid, false, deviceId))}
+        >
+          <PinOff className="size-4" /> Lepas sematan
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() =>
-            run(chat.archived ? 'Chat unarchived' : 'Chat archived', () =>
-              archiveChat(chat.jid, !chat.archived),
+            run(chat.archived ? 'Chat dikeluarkan dari arsip' : 'Chat diarsipkan', () =>
+              archiveChat(chat.jid, !chat.archived, deviceId),
             )
           }
         >
-          <Archive className="size-4" /> {chat.archived ? 'Unarchive' : 'Archive'}
+          {chat.archived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+          {chat.archived ? 'Keluarkan dari arsip' : 'Arsipkan'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="flex items-center gap-2">
-          <Timer className="size-4" /> Disappearing
+          <Timer className="size-4" /> Pesan sementara
         </DropdownMenuLabel>
         {DISAPPEARING_OPTIONS.map((option) => (
           <DropdownMenuItem
             key={option.seconds}
             onClick={() =>
-              run(`Disappearing set: ${option.label}`, () =>
-                setDisappearing(chat.jid, option.seconds),
+              run(`Pesan sementara: ${option.label}`, () =>
+                setDisappearing(chat.jid, option.seconds, deviceId),
               )
             }
           >

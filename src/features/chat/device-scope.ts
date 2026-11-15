@@ -3,7 +3,9 @@ import type { ChatInfo } from '@/api/chat'
 export interface ChatListFilters {
   search: string
   hasMedia: boolean
-  offset: number
+  archived?: boolean
+  /** Legacy offset pagination; the list now pages inside one infinite query. */
+  offset?: number
 }
 
 export interface ChatMessagesFilters {
