@@ -40,7 +40,7 @@ export function LoginQrDialog({
   const succeed = useCallback(() => {
     if (succeededRef.current) return
     succeededRef.current = true
-    toast.success('Device paired successfully')
+    toast.success('Perangkat berhasil dipasangkan')
     void queryClient.invalidateQueries({ queryKey: ['devices'] })
     close()
   }, [queryClient, close])
@@ -54,7 +54,7 @@ export function LoginQrDialog({
     } catch (err) {
       const apiError = toApiError(err)
       if (apiError.code === 'ALREADY_LOGGED_IN') {
-        setError('This device is already logged in.')
+        setError('Perangkat ini sudah login.')
       } else {
         setError(apiError.message)
       }
@@ -113,10 +113,10 @@ export function LoginQrDialog({
     <Dialog open={device !== null} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Scan QR code</DialogTitle>
+          <DialogTitle>Pindai kode QR</DialogTitle>
           <DialogDescription>
-            WhatsApp → Settings → Linked devices → Link a device
-            {device ? ` — pairing ${device.display_name || device.id}` : ''}
+            Di ponsel: WhatsApp → Perangkat tertaut → Tautkan perangkat
+            {device ? ` — memasangkan ${device.display_name || device.id}` : ''}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center gap-3">
@@ -126,15 +126,19 @@ export function LoginQrDialog({
             <>
               <img
                 src={qrSrc}
-                alt="WhatsApp pairing QR code"
+                alt="Kode QR pemasangan WhatsApp"
                 className="size-64 rounded-md bg-white p-2"
               />
               <p className="text-muted-foreground text-sm">
-                Refreshes in {secondsLeft}s — waiting for scan…
+                QR diperbarui dalam {secondsLeft} detik — menunggu pemindaian…
               </p>
             </>
           ) : (
-            <div className="flex size-64 items-center justify-center">
+            <div
+              className="flex size-64 items-center justify-center"
+              role="status"
+              aria-label="Memuat kode QR"
+            >
               <Loader2 className="text-muted-foreground size-6 animate-spin" />
             </div>
           )}

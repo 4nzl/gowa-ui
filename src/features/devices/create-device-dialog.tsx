@@ -16,11 +16,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toApiError } from '@/lib/api-error'
-import { useDeviceStore } from '@/stores/device'
 
 export function CreateDeviceDialog() {
   const queryClient = useQueryClient()
-  const selectDevice = useDeviceStore((state) => state.selectDevice)
   const [open, setOpen] = useState(false)
   const [deviceId, setDeviceId] = useState('')
   const [webhookUrl, setWebhookUrl] = useState('')
@@ -29,9 +27,8 @@ export function CreateDeviceDialog() {
   const mutation = useMutation({
     mutationFn: addDevice,
     onSuccess: (device) => {
-      toast.success(`Device ${device.id} added`)
+      toast.success(`Perangkat ${device.id} ditambahkan`)
       void queryClient.invalidateQueries({ queryKey: ['devices'] })
-      selectDevice(device.id)
       setOpen(false)
       setDeviceId('')
       setWebhookUrl('')
@@ -52,30 +49,30 @@ export function CreateDeviceDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" />
-          Add device
+        <Button size="icon" className="size-10 rounded-full" aria-label="Tambah perangkat">
+          <Plus className="size-5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add device</DialogTitle>
+          <DialogTitle>Tambah perangkat</DialogTitle>
           <DialogDescription>
-            Registers a device slot. Pair it with a phone afterwards via QR or pairing code.
+            Mendaftarkan slot perangkat baru. Setelah itu pasangkan dengan ponsel lewat QR atau kode
+            pairing. Perangkat aktif tidak berubah.
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-4" onSubmit={onSubmit}>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="device-id">Device ID (optional)</Label>
+            <Label htmlFor="device-id">ID perangkat (opsional)</Label>
             <Input
               id="device-id"
-              placeholder="auto-generated when empty"
+              placeholder="dibuat otomatis bila kosong"
               value={deviceId}
               onChange={(event) => setDeviceId(event.target.value)}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="webhook-url">Webhook URL (optional)</Label>
+            <Label htmlFor="webhook-url">URL webhook (opsional)</Label>
             <Input
               id="webhook-url"
               placeholder="https://example.com/webhook"
@@ -84,9 +81,11 @@ export function CreateDeviceDialog() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="webhook-secret">Webhook secret (optional)</Label>
+            <Label htmlFor="webhook-secret">Secret webhook (opsional)</Label>
             <Input
               id="webhook-secret"
+              type="password"
+              autoComplete="new-password"
               value={webhookSecret}
               onChange={(event) => setWebhookSecret(event.target.value)}
             />
@@ -94,7 +93,7 @@ export function CreateDeviceDialog() {
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-              Add device
+              Tambah perangkat
             </Button>
           </DialogFooter>
         </form>

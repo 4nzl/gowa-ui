@@ -6,17 +6,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { deviceTitle, stateDotStyles } from '@/features/devices/device-display'
 import { useDevices } from '@/hooks/use-devices'
 import { cn } from '@/lib/utils'
 import { useDeviceStore } from '@/stores/device'
-import type { DeviceState } from '@/api/types'
-
-const stateDots: Record<DeviceState, string> = {
-  logged_in: 'bg-emerald-500',
-  connected: 'bg-sky-500',
-  connecting: 'bg-amber-500',
-  disconnected: 'bg-muted-foreground/40',
-}
 
 export function DeviceSwitcher() {
   const { data: devices } = useDevices()
@@ -38,8 +31,8 @@ export function DeviceSwitcher() {
       <SelectContent>
         {devices.map((device) => (
           <SelectItem key={device.id} value={device.id}>
-            <span className={cn('size-2 shrink-0 rounded-full', stateDots[device.state])} />
-            <span className="truncate">{device.display_name || device.id}</span>
+            <span className={cn('size-2 shrink-0 rounded-full', stateDotStyles[device.state])} />
+            <span className="truncate">{deviceTitle(device)}</span>
           </SelectItem>
         ))}
       </SelectContent>

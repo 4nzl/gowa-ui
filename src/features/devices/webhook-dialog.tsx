@@ -47,10 +47,10 @@ export function DeviceWebhookDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Webhook for {device.display_name || device.id}</DialogTitle>
+          <DialogTitle>Webhook {device.display_name || device.id}</DialogTitle>
           <DialogDescription>
-            Events from this device are POSTed to the URL below. Leave the URL empty and save to
-            disable the webhook.
+            Event dari perangkat ini dikirim (POST) ke URL di bawah. Kosongkan URL lalu simpan untuk
+            menonaktifkan webhook.
           </DialogDescription>
         </DialogHeader>
         {loaded ? (
@@ -63,8 +63,8 @@ export function DeviceWebhookDialog({
           />
         ) : config.isError ? (
           <p className="text-destructive text-sm">
-            Couldn't load this device's webhook from the current server. Save stays disabled until
-            that configuration loads.
+            Konfigurasi webhook perangkat ini gagal dimuat dari server. Penyimpanan dinonaktifkan
+            sampai konfigurasi berhasil dimuat.
           </p>
         ) : (
           <div className="flex items-center justify-center py-8">
@@ -104,7 +104,7 @@ function WebhookForm({
       })
     },
     onSuccess: () => {
-      toast.success(`Webhook updated for ${device.id}`)
+      toast.success(`Webhook ${device.id} disimpan`)
       void queryClient.invalidateQueries({ queryKey: ['device-webhook', device.id] })
       onOpenChange(false)
     },
@@ -119,7 +119,7 @@ function WebhookForm({
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="device-webhook-url">Webhook URL</Label>
+        <Label htmlFor="device-webhook-url">URL webhook</Label>
         <Input
           id="device-webhook-url"
           placeholder="https://example.com/webhook"
@@ -128,26 +128,28 @@ function WebhookForm({
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="device-webhook-secret">Secret (optional)</Label>
+        <Label htmlFor="device-webhook-secret">Secret (opsional)</Label>
         <Input
           id="device-webhook-secret"
-          placeholder="used to sign payloads (X-Hub-Signature-256)"
+          type="password"
+          autoComplete="new-password"
+          placeholder="untuk menandatangani payload (X-Hub-Signature-256)"
           value={secret}
           onChange={(event) => setSecret(event.target.value)}
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="device-webhook-events">Events (optional)</Label>
+        <Label htmlFor="device-webhook-events">Event (opsional)</Label>
         <Input
           id="device-webhook-events"
-          placeholder="comma-separated; empty forwards all events"
+          placeholder="pisahkan dengan koma; kosong = semua event"
           value={events}
           onChange={(event) => setEvents(event.target.value)}
         />
       </div>
       <div className="flex items-center justify-between gap-4">
         <Label htmlFor="device-webhook-skip-verify" className="font-normal">
-          Skip TLS certificate verification (insecure)
+          Lewati verifikasi sertifikat TLS (tidak aman)
         </Label>
         <Switch
           id="device-webhook-skip-verify"
@@ -158,7 +160,7 @@ function WebhookForm({
       <DialogFooter>
         <Button type="submit" disabled={save.isPending}>
           {save.isPending && <Loader2 className="size-4 animate-spin" />}
-          Save webhook
+          Simpan webhook
         </Button>
       </DialogFooter>
     </form>

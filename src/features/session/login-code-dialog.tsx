@@ -48,7 +48,7 @@ export function LoginCodeDialog({
         .then((status) => {
           if (status.is_logged_in && !succeededRef.current) {
             succeededRef.current = true
-            toast.success('Device paired successfully')
+            toast.success('Perangkat berhasil dipasangkan')
             void queryClient.invalidateQueries({ queryKey: ['devices'] })
             onOpenChange(false)
           }
@@ -86,9 +86,10 @@ export function LoginCodeDialog({
     <Dialog open={device !== null} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Login with pairing code</DialogTitle>
+          <DialogTitle>Login dengan kode pairing</DialogTitle>
           <DialogDescription>
-            WhatsApp → Linked devices → Link a device → Link with phone number instead
+            Di ponsel: WhatsApp → Perangkat tertaut → Tautkan perangkat → Tautkan dengan nomor
+            telepon saja
           </DialogDescription>
         </DialogHeader>
         {pairCode ? (
@@ -96,19 +97,21 @@ export function LoginCodeDialog({
             <p className="font-mono text-3xl font-semibold tracking-widest">{pairCode}</p>
             <Button variant="outline" size="sm" onClick={copyCode}>
               {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-              {copied ? 'Copied' : 'Copy code'}
+              {copied ? 'Tersalin' : 'Salin kode'}
             </Button>
             <p className="text-muted-foreground text-center text-sm">
-              Enter this code on your phone — waiting for pairing…
+              Masukkan kode ini di ponsel — menunggu pemasangan…
             </p>
           </div>
         ) : (
           <form className="flex flex-col gap-4" onSubmit={onSubmit}>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="pair-phone">Phone number (international format)</Label>
+              <Label htmlFor="pair-phone">Nomor telepon (format internasional, tanpa +)</Label>
               <Input
                 id="pair-phone"
-                placeholder="628960561XXXX"
+                placeholder="62812xxxxxxxx"
+                inputMode="numeric"
+                autoComplete="off"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 required
@@ -116,7 +119,7 @@ export function LoginCodeDialog({
             </div>
             <Button type="submit" disabled={submitting || !phone.trim()}>
               {submitting && <Loader2 className="size-4 animate-spin" />}
-              Get pairing code
+              Minta kode pairing
             </Button>
           </form>
         )}
