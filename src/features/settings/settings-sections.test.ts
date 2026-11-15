@@ -96,6 +96,7 @@ describe('local data', () => {
       'gowa-recipient',
       'gowa-ui.media-paths.v1',
       'gowa-ui.emoji-recent.v1',
+      'gowa-ui.notify.v1',
       'gowa-ui.drafts.v1',
     ])
     for (const entry of LOCAL_DATA_ENTRIES) expect(entry.description).not.toBe('')

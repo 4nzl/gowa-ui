@@ -27,6 +27,9 @@ import {
 } from '@/features/settings/settings-sections'
 import { useActiveDevice } from '@/features/settings/use-active-device'
 import { useAppInfo } from '@/hooks/use-app-info'
+import { Switch } from '@/components/ui/switch'
+import { useNotifyStore } from '@/features/notify/notify-store'
+import { WATCH_POLL_MS } from '@/features/notify/use-new-message-watcher'
 import { formatBytes } from '@/lib/format'
 
 function ProfileSection() {
@@ -183,34 +186,68 @@ function ServerSection() {
 
 function NotificationsSection() {
   const secure = typeof window !== 'undefined' && window.isSecureContext
+  const prefs = useNotifyStore((state) => state.prefs)
+  const setPrefs = useNotifyStore((state) => state.setPrefs)
+  const { device } = useActiveDevice()
+  const clearDevice = useNotifyStore((state) => state.clearDevice)
   return (
     <>
       <PaneSection
-        title="Notifikasi belum tersedia"
-        description="Pengaturan notifikasi sengaja tidak ditampilkan karena belum ada yang bisa dijalankan dengan jujur."
+        title="Notifikasi di dashboard"
+        description={`Selama tab dashboard terbuka, GOWA dicek tiap ${WATCH_POLL_MS / 1000} detik. Pesan masuk baru memunculkan pemberitahuan, bunyi, angka di ikon Chat, dan angka di judul tab.`}
       >
+        <div className="flex flex-col gap-3">
+          <label className="flex items-center justify-between gap-4 text-sm">
+            <span>
+              <span className="block font-medium">Tampilkan pemberitahuan</span>
+              <span className="text-muted-foreground block text-xs">
+                Kotak kecil berisi pengirim dan cuplikan pesan, dengan tombol Buka.
+              </span>
+            </span>
+            <Switch
+              checked={prefs.toast}
+              onCheckedChange={(toast) => setPrefs({ toast })}
+              aria-label="Tampilkan pemberitahuan"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4 text-sm">
+            <span>
+              <span className="block font-medium">Bunyi</span>
+              <span className="text-muted-foreground block text-xs">
+                Bunyi pendek. Browser baru mengizinkan suara setelah halaman pernah diklik.
+              </span>
+            </span>
+            <Switch
+              checked={prefs.sound}
+              onCheckedChange={(sound) => setPrefs({ sound })}
+              aria-label="Bunyi notifikasi"
+            />
+          </label>
+          {device && (
+            <Button variant="outline" className="self-start" onClick={() => clearDevice(device.id)}>
+              Tandai semua sudah dilihat
+            </Button>
+          )}
+        </div>
+      </PaneSection>
+      <PaneSection title="Batasan">
         <ul className="text-muted-foreground list-disc space-y-2 pl-5 text-sm">
           <li>
-            Notifikasi browser hanya bisa dipakai di konteks aman (HTTPS atau localhost). Dashboard
-            yang dibuka lewat HTTP biasa di jaringan lokal tidak mendapat izin notifikasi; hal yang
-            sama berlaku untuk clipboard dan mikrofon.
+            Angka &quot;baru&quot; berarti pesan masuk sejak chat terakhir dibuka di browser ini,
+            bukan status baca WhatsApp: GOWA tidak menyimpan status baca.
           </li>
           <li>
-            GOWA belum mengirim event pesan masuk lewat WebSocket, jadi dashboard tidak tahu kapan
-            ada pesan baru tanpa memuat ulang chat. Gunakan webhook perangkat untuk meneruskan pesan
-            masuk ke sistem lain.
+            Ada jeda hingga {WATCH_POLL_MS / 1000} detik karena GOWA belum mengirim event pesan
+            masuk lewat WebSocket. Hanya 30 chat terbaru yang dipantau.
+          </li>
+          <li>
+            Pemberitahuan sistem operasi (muncul saat browser diminimalkan) butuh HTTPS. Dashboard
+            yang dibuka lewat HTTP di jaringan lokal tidak mendapat izin itu.
           </li>
         </ul>
-      </PaneSection>
-      <PaneSection title="Status browser ini">
-        <dl>
+        <dl className="mt-3">
           <InfoRow label="Konteks aman (window.isSecureContext)">{yesNo(secure)}</InfoRow>
         </dl>
-        <p className="text-muted-foreground mt-2 text-xs">
-          {secure
-            ? 'Halaman ini dibuka di konteks aman, tetapi notifikasi tetap menunggu dukungan event pesan dari GOWA.'
-            : 'Halaman ini dibuka tanpa HTTPS, sehingga browser memblokir notifikasi.'}
-        </p>
       </PaneSection>
     </>
   )

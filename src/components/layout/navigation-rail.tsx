@@ -11,15 +11,38 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { BRAND } from '@/config/brand'
 import { cn } from '@/lib/utils'
+import { useFreshTotal } from '@/features/notify/notify-store'
+import { useDeviceStore } from '@/stores/device'
+
+/** New incoming messages for the active device, shown on the Chat item. */
+function useChatBadge(): number {
+  return useFreshTotal(useDeviceStore((state) => state.selectedDeviceId))
+}
+
+function CountBadge({ count, className }: { count: number; className?: string }) {
+  if (count <= 0) return null
+  return (
+    <span
+      className={cn(
+        'bg-live absolute min-w-[18px] rounded-full px-1 text-center text-[10.5px] leading-[18px] font-semibold text-[#073e29]',
+        className,
+      )}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
 
 function RailLink({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon
+  const badge = useChatBadge()
+  const count = item.to === '/chats' ? badge : 0
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Link
           to={item.to}
-          aria-label={item.label}
+          aria-label={count > 0 ? `${item.label}, ${count} pesan baru` : item.label}
           aria-current={active ? 'page' : undefined}
           className={cn(
             'relative grid size-11 shrink-0 place-items-center rounded-full transition-colors',
@@ -30,6 +53,7 @@ function RailLink({ item, active }: { item: NavItem; active: boolean }) {
           )}
         >
           <Icon className="size-6" strokeWidth={1.8} />
+          <CountBadge count={count} className="-top-0.5 -right-1" />
         </Link>
       </TooltipTrigger>
       <TooltipContent side="right">{item.label}</TooltipContent>
@@ -89,6 +113,7 @@ export function BottomNav({ className }: { className?: string }) {
   const { pathname } = useLocation()
   const active = activeNavItem(pathname)
   const activeRef = useRef<HTMLAnchorElement>(null)
+  const badge = useChatBadge()
 
   useEffect(() => {
     activeRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
@@ -121,6 +146,7 @@ export function BottomNav({ className }: { className?: string }) {
               )}
             >
               <Icon className="size-[22px]" strokeWidth={1.8} />
+              {item.to === '/chats' && <CountBadge count={badge} className="top-1 right-3.5" />}
               <span className="max-w-full truncate">{item.label}</span>
             </Link>
           )

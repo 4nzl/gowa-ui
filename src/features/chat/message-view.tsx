@@ -28,6 +28,7 @@ import { toApiError } from '@/lib/api-error'
 import { connectionPlaceholder, trackedQueryFn } from '@/lib/private-query'
 import { cn } from '@/lib/utils'
 import { useConnection } from '@/stores/connection'
+import { useNotifyStore } from '@/features/notify/notify-store'
 
 const PAGE_SIZE = 30
 /** No WebSocket event for new messages exists, so an open chat polls its newest page. */
@@ -267,6 +268,26 @@ export function MessageView({
 
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = olderPages
   const latestPage = latest.data?.data
+
+  // Tell the notifier which chat is on screen and clear its "baru" count while it is read.
+  const newestTime = latestPage?.[0]?.timestamp
+  useEffect(() => {
+    const store = useNotifyStore.getState()
+    store.setOpen({ deviceId, jid: chat.jid })
+    return () => {
+      if (useNotifyStore.getState().open?.jid === chat.jid) store.setOpen(null)
+    }
+  }, [deviceId, chat.jid])
+  useEffect(() => {
+    const mark = () => {
+      if (document.visibilityState !== 'visible') return
+      const at = newestTime ?? chat.last_message_time
+      useNotifyStore.getState().markSeen(deviceId, chat.jid, at || undefined)
+    }
+    mark()
+    document.addEventListener('visibilitychange', mark)
+    return () => document.removeEventListener('visibilitychange', mark)
+  }, [deviceId, chat.jid, chat.last_message_time, newestTime])
   const messages = useMemo(
     () =>
       mergeMessages(...(olderPages.data?.pages.map((page) => page.data) ?? []), latestPage ?? []),

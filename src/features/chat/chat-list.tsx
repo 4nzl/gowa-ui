@@ -9,6 +9,10 @@ import { toApiError } from '@/lib/api-error'
 import { trackedQueryFn } from '@/lib/private-query'
 import { cn } from '@/lib/utils'
 import { useConnection } from '@/stores/connection'
+import { useNotifyStore } from '@/features/notify/notify-store'
+import type { FreshChat } from '@/features/notify/notify-logic'
+
+const NO_FRESH: Record<string, FreshChat> = {}
 
 const PAGE_SIZE = 30
 /** New chats and reordering only show up by asking again; GOWA has no chat-list event. */
@@ -36,6 +40,8 @@ export function ChatList({
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<ChatFilter>('all')
+  // New-since-last-opened counts from the in-app notifier (not WhatsApp read state).
+  const fresh = useNotifyStore((state) => state.byDevice[deviceId]?.fresh ?? NO_FRESH)
   const bottomSentinel = useRef<HTMLLIElement>(null)
   const scroller = useRef<HTMLDivElement>(null)
 
@@ -178,13 +184,28 @@ export function ChatList({
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5 border-b py-3">
                       <span className="flex items-baseline justify-between gap-2">
                         <span className="truncate text-[15.5px] font-medium">{name}</span>
-                        <time className="text-muted-foreground shrink-0 text-xs">
+                        <time
+                          className={cn(
+                            'shrink-0 text-xs',
+                            fresh[chat.jid] ? 'text-primary font-medium' : 'text-muted-foreground',
+                          )}
+                        >
                           {formatChatTime(chat.last_message_time)}
                         </time>
                       </span>
-                      <span className="text-muted-foreground truncate text-[13.5px]">
-                        {chat.archived && filter !== 'archived' ? 'Diarsipkan · ' : ''}
-                        {chatCaption(chat)}
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground truncate text-[13.5px]">
+                          {chat.archived && filter !== 'archived' ? 'Diarsipkan · ' : ''}
+                          {chatCaption(chat)}
+                        </span>
+                        {fresh[chat.jid] ? (
+                          <span
+                            className="bg-live min-w-5 shrink-0 rounded-full px-1.5 text-center text-[11px] leading-5 font-semibold text-[#073e29]"
+                            aria-label={`${fresh[chat.jid].count} pesan baru`}
+                          >
+                            {fresh[chat.jid].count > 99 ? '99+' : fresh[chat.jid].count}
+                          </span>
+                        ) : null}
                       </span>
                     </span>
                   </button>

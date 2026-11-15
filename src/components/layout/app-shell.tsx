@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { DeviceSwitcher } from '@/components/layout/device-switcher'
@@ -7,6 +8,10 @@ import { WsBadge } from '@/components/layout/ws-badge'
 import { BRAND } from '@/config/brand'
 import { PasskeyDialog } from '@/features/session/passkey-dialog'
 import { useDeviceSelectionSync } from '@/hooks/use-device-selection'
+import { titleWithCount } from '@/features/notify/notify-logic'
+import { useFreshTotal } from '@/features/notify/notify-store'
+import { useNewMessageWatcher } from '@/features/notify/use-new-message-watcher'
+import { useDeviceStore } from '@/stores/device'
 import { cn } from '@/lib/utils'
 import { useConnection } from '@/stores/connection'
 import { useShellStore } from '@/stores/shell'
@@ -29,6 +34,12 @@ export function AppShell() {
   const location = useLocation()
   const immersive = useShellStore((state) => state.immersive)
   useDeviceSelectionSync()
+  useNewMessageWatcher()
+  const freshTotal = useFreshTotal(useDeviceStore((state) => state.selectedDeviceId))
+
+  useEffect(() => {
+    document.title = titleWithCount('GOWA', freshTotal)
+  }, [freshTotal])
 
   if (status === 'booting') {
     return (

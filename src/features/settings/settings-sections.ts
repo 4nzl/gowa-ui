@@ -49,7 +49,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: 'notifications',
     label: 'Notifikasi',
-    description: 'Mengapa notifikasi browser belum tersedia.',
+    description: 'Pemberitahuan pesan baru, bunyi, dan batasannya.',
   },
   {
     id: 'local-data',
@@ -143,6 +143,13 @@ export const LOCAL_DATA_ENTRIES: LocalDataEntry[] = [
     label: 'Emoji terakhir',
     description: 'Daftar emoji yang terakhir dipakai di kolom pesan.',
     action: 'emoji-recent',
+  },
+  {
+    key: 'gowa-ui.notify.v1',
+    storage: 'localStorage',
+    label: 'Penanda pesan baru',
+    description:
+      'Waktu pesan terakhir yang sudah dilihat per chat dan pilihan pemberitahuan/bunyi. Hapus lewat "Tandai semua sudah dilihat" di Notifikasi.',
   },
   {
     key: 'gowa-ui.drafts.v1',
